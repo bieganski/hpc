@@ -1,8 +1,12 @@
 #include <time.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-#define RADIUS        3
-#define NUM_ELEMENTS  1000 
+#define RADIUS        300
+#define NUM_ELEMENTS  1000
+
+#define NUM_THREADS_PER_BLOCK  32 
+#define NUM_BLOCKS_PER_GRID    2
 
 static void handleError(cudaError_t err, const char *file, int line ) {
   if (err != cudaSuccess) {
@@ -12,12 +16,49 @@ static void handleError(cudaError_t err, const char *file, int line ) {
 }
 #define cudaCheck( err ) (handleError(err, __FILE__, __LINE__ ))
 
+
+__device__ int in_range(int idx) {
+  if (idx >= 0 && idx <= NUM_ELEMENTS -1)
+    return 1;
+  else
+    return 0;
+}
+
+
 __global__ void stencil_1d(int *in, int *out) {
-  //PUT YOUR CODE HERE
+  int i = threadIdx.x + (blockIdx.x * blockDim.x);
+  // int all = blockDim.x * gridDim.x;
+  // printf("me, all: %d, %d\n", idx, all);
+  
+  for(int j = 0; j <= RADIUS; j++) {
+    int idx1 = i - j;
+    if (!in_range(idx1))
+      continue;
+    out[i] += in[idx1];
+    if (j == 0)
+      continue;
+    int idx2 = i + j;
+    if (!in_range(idx2))
+      continue;
+    out[i] += in[idx2];
+  }
 }
 
 void cpu_stencil_1d(int *in, int *out) {
-  //PUT YOUR CODE HERE
+  for (int i = 0; i < NUM_ELEMENTS; i++) {
+    for(int j = 0; j <= RADIUS; j++) {
+      int idx1 = i - j;
+      if (idx1 < 0)
+        continue;
+      out[i] += in[idx1];
+      if (j == 0)
+        continue;
+      int idx2 = i + j;
+        if (idx1 > NUM_ELEMENTS - 1)
+          continue;
+      out[i] += in[idx2];
+    }
+  }
 }
 
 int main() {
@@ -28,13 +69,36 @@ int main() {
   cudaEventCreate(&stop);
   cudaEventRecord( start, 0 );
 
+  int *dev_in, *dev_out;
+
+  int BYTES_NUM = sizeof(int) * NUM_ELEMENTS;
+
+  int *host_in = (int*)malloc(BYTES_NUM);
+  int *host_out = (int*)malloc(BYTES_NUM);
+
   //PUT YOUR CODE HERE - DEVICE MEMORY ALLOCATION
+  cudaMalloc((void**)&dev_in, BYTES_NUM);
+  cudaMalloc((void**)&dev_out, BYTES_NUM);
 
   //PUT YOUR CODE HERE - KERNEL EXECUTION
+  for(int i = 0; i < NUM_ELEMENTS; i++) {
+    host_in[i] = i;
+  }
+  cudaMemcpy(dev_in, host_in, BYTES_NUM, cudaMemcpyHostToDevice);
+  
+  int num_blocks = NUM_ELEMENTS / NUM_THREADS_PER_BLOCK + 1;
 
+  stencil_1d<<<num_blocks, NUM_THREADS_PER_BLOCK>>>(dev_in, dev_out);
+
+  // blockDim.x,y,z gives the number of threads in a block, in the particular direction
+  // gridDim.x,y,z gives the number of blocks in a grid, in the particular direction
+
+  
   cudaCheck(cudaPeekAtLastError());
 
+
   //PUT YOUR CODE HERE - COPY RESULT FROM DEVICE TO HOST
+  cudaMemcpy(host_out, dev_out, BYTES_NUM, cudaMemcpyDeviceToHost);
   
   cudaEventRecord(stop, 0);
   cudaEventSynchronize(stop);
@@ -45,11 +109,13 @@ int main() {
   cudaEventDestroy(stop);
 
   //PUT YOUR CODE HERE - FREE DEVICE MEMORY  
+  cudaFree(dev_in);
+  cudaFree(dev_out);
 
   struct timespec cpu_start, cpu_stop;
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_start);
 
-  cpu_stencil_1d(in, out);
+  cpu_stencil_1d(host_in, host_out);
 
   clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &cpu_stop);
   double result = (cpu_stop.tv_sec - cpu_start.tv_sec) * 1e3 + (cpu_stop.tv_nsec - cpu_start.tv_nsec) / 1e6;
@@ -57,19 +123,3 @@ int main() {
   
   return 0;
 }
-
-
-
-
-
-/*
-__s : __syncthreads();
-cmal : cudaMalloc((void**)&${1:variable}, ${2:bytes});
-cmalmng : cudaMallocManaged((void**)&${1:variable}, ${2:bytes});
-cmem : cudaMemcpy(${1:dest}, ${2:src}, ${3:bytes}, cudaMemcpy${4:Host}To${5:Device});
-cfree : cudaFree(${1:variable});
-kerneldef : __global__ void ${1:kernel}(${2}) {\n}
-kernelcall : ${1:kernel}<<<${2},${3}>>>(${4});
-thrusthv : thrust::host_vector<${1:char}> v$0;
-thrustdv : thrust::device_vector<${1:char}> v$0;
-*/

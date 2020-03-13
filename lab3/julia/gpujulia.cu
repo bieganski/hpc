@@ -58,20 +58,26 @@ __global__ void kernel(unsigned char *ptr) {
 int main(void) {
   CPUBitmap bitmap(DIM, DIM);
   unsigned char *dev_bitmap;
-
+  
   HANDLE_ERROR(cudaMalloc((void**)&dev_bitmap, bitmap.image_size()));
 
   dim3 grid(DIM, DIM);
 
   kernel<<<grid, 1>>>(dev_bitmap);
 
+  // <<<blocksPerGrid, threadsPerBlock>>>
+
+  // blockDim.x,y,z gives the number of threads in a block, in the particular direction
+  // gridDim.x,y,z gives the number of blocks in a grid, in the particular direction
+
+  
   HANDLE_ERROR(cudaMemcpy(bitmap.get_ptr(),
 			   dev_bitmap,
 			   bitmap.image_size(),
 			   cudaMemcpyDeviceToHost));
-  bitmap.display_and_exit();
+  // bitmap.display_and_exit();
   // Alternatively:
-  //bitmap.dump_ppm("image.ppm");
+  bitmap.dump_ppm("image.ppm");
 
   HANDLE_ERROR(cudaFree(dev_bitmap));
 }
