@@ -1,0 +1,37 @@
+dla RAD = 3
+
+    N = 10^3
+GPU: 3.3 ms
+CPU: 0.1 ms
+
+    N = 10^6
+GPU: 16.1 ms
+CPU: 30.3 ms
+
+    N = 10^8
+GPU: 867.0 ms
+CPU: 2274.4 ms
+
+
+
+dla RAD = 300
+
+    N = 10^3
+GPU: 0.8 ms
+CPU: 4.1 ms
+
+    N = 10^6
+GPU: 22.6 ms
+CPU: 1827 ms
+
+
+    N = 10^8
+GPU: za długo
+CPU: za długo
+
+
+dla RAD = 3000
+    N = 10^6
+GPU: 32.6 ms
+CPU: 17381.7 ms
+

@@ -1,0 +1,94 @@
+2a3
+> #include <stdlib.h>
+5c6,9
+< #define NUM_ELEMENTS  1000 
+---
+> #define NUM_ELEMENTS  100000000
+> 
+> #define NUM_THREADS_PER_BLOCK  32 
+> #define NUM_BLOCKS_PER_GRID    2
+14a19,27
+> 
+> __device__ int in_range(int idx) {
+>   if (idx >= 0 && idx <= NUM_ELEMENTS -1)
+>     return 1;
+>   else
+>     return 0;
+> }
+> 
+> 
+16c29,44
+<   //PUT YOUR CODE HERE
+---
+>   int i = threadIdx.x + (blockIdx.x * blockDim.x);
+>   // int all = blockDim.x * gridDim.x;
+>   // printf("me, all: %d, %d\n", idx, all);
+>   
+>   for(int j = 0; j <= RADIUS; j++) {
+>     int idx1 = i - j;
+>     if (!in_range(idx1))
+>       continue;
+>     out[i] += in[idx1];
+>     if (j == 0)
+>       continue;
+>     int idx2 = i + j;
+>     if (!in_range(idx2))
+>       continue;
+>     out[i] += in[idx2];
+>   }
+20c48,61
+<   //PUT YOUR CODE HERE
+---
+>   for (int i = 0; i < NUM_ELEMENTS; i++) {
+>     for(int j = 0; j <= RADIUS; j++) {
+>       int idx1 = i - j;
+>       if (idx1 < 0)
+>         continue;
+>       out[i] += in[idx1];
+>       if (j == 0)
+>         continue;
+>       int idx2 = i + j;
+>         if (idx1 > NUM_ELEMENTS - 1)
+>           continue;
+>       out[i] += in[idx2];
+>     }
+>   }
+30a72,78
+>   int *dev_in, *dev_out;
+> 
+>   int BYTES_NUM = sizeof(int) * NUM_ELEMENTS;
+> 
+>   int *host_in = (int*)malloc(BYTES_NUM);
+>   int *host_out = (int*)malloc(BYTES_NUM);
+> 
+31a80,81
+>   cudaMalloc((void**)&dev_in, BYTES_NUM);
+>   cudaMalloc((void**)&dev_out, BYTES_NUM);
+33a84,94
+>   for(int i = 0; i < NUM_ELEMENTS; i++) {
+>     host_in[i] = i;
+>   }
+>   cudaMemcpy(dev_in, host_in, BYTES_NUM, cudaMemcpyHostToDevice);
+>   
+>   int num_blocks = NUM_ELEMENTS / NUM_THREADS_PER_BLOCK + 1;
+> 
+>   stencil_1d<<<num_blocks, NUM_THREADS_PER_BLOCK>>>(dev_in, dev_out);
+> 
+>   // blockDim.x,y,z gives the number of threads in a block, in the particular direction
+>   // gridDim.x,y,z gives the number of blocks in a grid, in the particular direction
+34a96
+>   
+36a99
+> 
+37a101
+>   cudaMemcpy(host_out, dev_out, BYTES_NUM, cudaMemcpyDeviceToHost);
+47a112,113
+>   cudaFree(dev_in);
+>   cudaFree(dev_out);
+52c118
+<   cpu_stencil_1d(in, out);
+---
+>   cpu_stencil_1d(host_in, host_out);
+60,61d125
+< 
+< 

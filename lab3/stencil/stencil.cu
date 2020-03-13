@@ -2,8 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define RADIUS        300
-#define NUM_ELEMENTS  1000
+#define RADIUS        3000
+#define NUM_ELEMENTS  1000000
 
 #define NUM_THREADS_PER_BLOCK  32 
 #define NUM_BLOCKS_PER_GRID    2
