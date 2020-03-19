@@ -5,17 +5,22 @@
 
 static cudaEvent_t start, stop;
 
+static cudaEvent_t start2, stop2;
+
 static struct timespec cpu_start, cpu_stop;
 
-bool inited = false;
+static bool second = false;
 
 void start_time_cuda() {
-    if (!inited) {
-        inited = true;
-        cudaEventCreate(&start);
-        cudaEventCreate(&stop);
-    }
-    cudaEventRecord( start, 0 );
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventCreate(&start2);
+    cudaEventCreate(&stop2);
+
+    if (second)
+        cudaEventRecord( start2, 0 );
+    else
+        cudaEventRecord( start, 0 );
 }
 
 
@@ -24,11 +29,18 @@ void start_time_cpu() {
 }
 
 void stop_time_cuda() {
-  cudaEventRecord(stop, 0);
-  cudaEventSynchronize(stop);
-  float elapsedTime;
-  cudaEventElapsedTime( &elapsedTime, start, stop);
-  printf("Total GPU execution time:  %3.1f ms\n", elapsedTime);
+    float elapsedTime;
+    if (second) {
+        cudaEventRecord(stop2, 0);
+        cudaEventSynchronize(stop2);
+        cudaEventElapsedTime( &elapsedTime, start2, stop2);    
+    } else {
+        cudaEventRecord(stop, 0);
+        cudaEventSynchronize(stop);
+        cudaEventElapsedTime( &elapsedTime, start, stop);
+    }
+    printf("Total GPU execution time:  %3.1f ms\n", elapsedTime);
+    second = true;
 }
 
 

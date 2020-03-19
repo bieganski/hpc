@@ -52,6 +52,13 @@ int main(void) {
     printf("GPU sum = %d.\n", result);
     
     stop_time_cuda();
+    
+    start_time_cuda();
+    sum<<<1, THREADS>>>(gpu_result);
+    cudaMalloc((void**) &gpu_result, sizeof(int));
+    cudaFree(gpu_result);
+    stop_time_cuda();
+
 
     start_time_cpu();
     int sum = 0; 
