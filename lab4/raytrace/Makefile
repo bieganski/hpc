@@ -247,7 +247,7 @@ else
 endif
 
 raytrace.o: raytrace.cu
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -O0 -Xopencc -O0 -Xptxas -O0 -o $@ -c $<
 
 raytrace: raytrace.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
