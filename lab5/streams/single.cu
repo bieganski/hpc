@@ -42,6 +42,9 @@ int main(void) {
     HANDLE_ERROR(cudaEventCreate(&stop));
     HANDLE_ERROR(cudaEventRecord(start, 0));
 
+
+    // TODO
+    // uncomment for measuring time using single, defualt null stream 
     // for (int i = 0; i < FULL_DATA_SIZE; i += N) {
     //     HANDLE_ERROR(cudaMemcpy(dev_a, host_a + i, N * sizeof(int), cudaMemcpyHostToDevice));
     //     HANDLE_ERROR(cudaMemcpy(dev_b, host_b + i, N * sizeof(int), cudaMemcpyHostToDevice));
