@@ -18,8 +18,9 @@ int main(void) {
     cudaEvent_t start, stop;
     float elapsedTime;
 
-    cudaStream_t stream;
-    cudaStreamCreate(&stream);
+    cudaStream_t stream1, stream2;
+    cudaStreamCreate(&stream1);
+    cudaStreamCreate(&stream2);
 
     int *host_a, *host_b, *host_c;
     int *dev_a, *dev_b, *dev_c;
@@ -41,16 +42,34 @@ int main(void) {
     HANDLE_ERROR(cudaEventCreate(&stop));
     HANDLE_ERROR(cudaEventRecord(start, 0));
 
+    // for (int i = 0; i < FULL_DATA_SIZE; i += N) {
+    //     HANDLE_ERROR(cudaMemcpy(dev_a, host_a + i, N * sizeof(int), cudaMemcpyHostToDevice));
+    //     HANDLE_ERROR(cudaMemcpy(dev_b, host_b + i, N * sizeof(int), cudaMemcpyHostToDevice));
+
+    //     kernel<<<N / 256, 256>>>(dev_a, dev_b, dev_c);
+
+    //     HANDLE_ERROR(cudaMemcpy(host_c + i, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost));
+    // }
+    int parity = 0;
+
     for (int i = 0; i < FULL_DATA_SIZE; i += N) {
-        HANDLE_ERROR(cudaMemcpyAsync(dev_a, host_a + i, N * sizeof(int), cudaMemcpyHostToDevice, stream));
-        HANDLE_ERROR(cudaMemcpyAsync(dev_b, host_b + i, N * sizeof(int), cudaMemcpyHostToDevice, stream));
-
-        kernel<<<N / 256, 256, 0, stream>>>(dev_a, dev_b, dev_c);
-
-        HANDLE_ERROR(cudaMemcpyAsync(host_c + i, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost, stream));
+        parity = 1 - parity;
+        
+        if (parity) {
+            HANDLE_ERROR(cudaMemcpyAsync(dev_a, host_a + i, N * sizeof(int), cudaMemcpyHostToDevice, stream1));
+            HANDLE_ERROR(cudaMemcpyAsync(dev_b, host_b + i, N * sizeof(int), cudaMemcpyHostToDevice, stream1));
+            kernel<<<N / 256, 256, 0, stream1>>>(dev_a, dev_b, dev_c);
+            HANDLE_ERROR(cudaMemcpyAsync(host_c + i, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost, stream1));
+        } else {
+            HANDLE_ERROR(cudaMemcpyAsync(dev_a, host_a + i, N * sizeof(int), cudaMemcpyHostToDevice, stream2));
+            HANDLE_ERROR(cudaMemcpyAsync(dev_b, host_b + i, N * sizeof(int), cudaMemcpyHostToDevice, stream2));
+            kernel<<<N / 256, 256, 0, stream2>>>(dev_a, dev_b, dev_c);
+            HANDLE_ERROR(cudaMemcpyAsync(host_c + i, dev_c, N * sizeof(int), cudaMemcpyDeviceToHost, stream2));
+        }
     }
 
-    HANDLE_ERROR(cudaStreamSynchronize(stream));
+    HANDLE_ERROR(cudaStreamSynchronize(stream1));
+    HANDLE_ERROR(cudaStreamSynchronize(stream2));
 
     HANDLE_ERROR(cudaEventRecord(stop, 0));
     HANDLE_ERROR(cudaEventSynchronize(stop));
@@ -66,7 +85,8 @@ int main(void) {
     HANDLE_ERROR(cudaFree(dev_b));
     HANDLE_ERROR(cudaFree(dev_c));
 
-    HANDLE_ERROR(cudaStreamDestroy(stream));
+    HANDLE_ERROR(cudaStreamDestroy(stream1));
+    HANDLE_ERROR(cudaStreamDestroy(stream2));
     
     return 0;
 }
