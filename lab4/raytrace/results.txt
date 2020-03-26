@@ -1,0 +1,46 @@
+global memory vs constant memory, measured time consits of memory copy + kernel execution
+SPHERES = 1000
+
+FIRST: Total GPU execution time:  7.0421118736 ms
+SECOND: Total GPU execution time:  5.4546241760 ms
+
+in case of measuring only kernel execution time, it's strange but 
+it seems that global memory reads are quire faster
+
+FIRST: Total GPU execution time:  2.5203199387 ms
+SECOND: Total GPU execution time:  5.4095997810 ms
+
+changing kernel main loop iteration to
+
+for (int _i = 0; _i < 1000 * SPHERES; _i++) { 
+    int i = _i % (SPHERES + 1);
+
+and measuring only kernel execution time resulted in times below:
+
+FIRST: Total GPU execution time:  3047.6003417969 ms
+SECOND: Total GPU execution time:  7943.9316406250 ms
+
+what shows that constant memory access can be slower than global.
+
+
+I also tried teture memory, but without any special spatial pattern.
+I created 3 bindings:
+
+    texture<float, 1> r;
+    texture<float, 1> g;
+    texture<float, 1> b;
+meaning arrays of speheres colors.
+
+Only-kernel-execution time against global memory is presented below:
+
+FIRST: Total GPU execution time:  2.5214400291 ms
+SECOND: Total GPU execution time:  2.5024321079 ms
+
+With trick above (_i in loop, for arithmetic intensity increase) I obtained times:
+
+FIRST: Total GPU execution time:  3055.8164062500 ms
+SECOND: Total GPU execution time:  3088.7192382812 ms
+
+Which shows, that without any special memory access pattern, texture memory is
+comparable to global.
+
