@@ -74,9 +74,11 @@ def init_communities():
         VC[node] = node
 
 # computes e_{i -> C[i]}
-def compute_e(i):
-    neighbors = CV[VC[i]]
-    return sum([W[frozenset(i, n)] for n in neighbors if i != n])
+def compute_e(i, c):
+    i_ns = G[i]
+    real_ns = [x for x in CV[c] if x in i_ns]
+    # w razie problemów przyjrzeć się temu `if i != n` niżej
+    return sum([W[frozenset([i, n])] for n in real_ns if i != n])
 
 def compute_ac(c):
     return sum( [ k[i] for i in CV[c] ] )
@@ -84,10 +86,28 @@ def compute_ac(c):
 def compute_mod():
     assert(k[0] == 0)
     m = k.sum(0) / 2
-    s1 = sum( [compute_e(node) for node in range(1,N+1)] )
+    s1 = sum( [compute_e(node, VC[node]) for node in range(1,N+1)] )
     s2 = sum( [compute_ac(c)   for c in range(1, C+1)] )
     return s1 / (2 * m) - s2 / (4 * m ** 2)
 
-if __name__ == "__main__":
+m = 0
+def init():
+    global m
     init_communities()
+    m = k.sum(0) / 2
+
+def compute_gain(node, new_community):
+    s1 = compute_e(node, new_community) - compute_e(node, VC[node])
+    s2 = k[node] * ( compute_ac(VC[node]) - k[node] - compute_ac(new_community) )
+    return s1 / m + s2 / (2 * m ** 2)
+
+
+
+if __name__ == "__main__":
+    init()
+    print("m", m)
     print(compute_mod())
+    for v in range(1, N + 1):
+        for c in range(1, C + 1):
+            print(v, " to ", c, " gain: ")
+            print(compute_gain(v, c))
