@@ -97,7 +97,7 @@ def init():
 
 def compute_gain(node, new_community):
     bias = W.get(frozenset([node, node]), 0)
-    s1 = compute_e(node, new_community) - compute_e(node, VC[node] - bias)
+    s1 = compute_e(node, new_community) - compute_e(node, VC[node]) - bias
     s2 = k[node] * (compute_ac(VC[node]) - k[node] - compute_ac(new_community))
     return s1 / m + s2 / (2 * m ** 2)
 
@@ -113,25 +113,34 @@ def algo():
     while True:
         changed_sth = False
         for v in VC.keys():
-            for c in CV.keys():
-                if compute_gain(v, c) >= MIN_GAIN:
+            for c in set(map(VC.get, G[v])):
+                if v in CV[c]:
+                    continue
+                if len(CV[c]) == 1 and len(CV[v]) == 1 and c > v:
+                    continue  # single-node communities, don't move to upper index
+                gain = compute_gain(v, c)
+                print(">> Gain: ", gain)
+                if gain >= MIN_GAIN:
                     changed_sth = True
                     print("algo: przenoszę v=", v, " do c=", c)
                     move_to_community(v, c)
         if not changed_sth:
             return
+        print("algo: przed reinit, nowe cv, vc:", CV, VC)
         reinit()
+        print("algo: po reinicie, nowe cv, vc:", CV, VC)
 
 
 def reinit():
-    global G, W, k, m
+    global G, W, k, m, CV, VC
     GG = {}
     WW = {}
     kk = np.zeros_like(k)
     for c, vs in CV.items():
-        if vs == []:
+        if len(vs) == 0:
             continue
         c_weight = 0
+        GG[c] = set()
         for v in vs:
             v_inner_ns = vs.intersection(G[v])  # into it's community
             v_outer_ns = G[v] - v_inner_ns  # outside
@@ -141,10 +150,11 @@ def reinit():
 
             for out in v_outer_ns:
                 # update graph description
-                append_value(GG, c, out)
+                new_out = VC[out]
+                append_value(GG, c, new_out)
 
                 # update edges
-                key = frozenset([c, VC[out]])
+                key = frozenset([c, new_out])
                 val = W[frozenset([v, out])]
                 if WW.get(key) is None:
                     WW[key] = 0
@@ -155,11 +165,13 @@ def reinit():
 
         WW[frozenset([c, c])] = c_weight
         print("reinit: ustawiono wage ", c_weight, " dla c=", c)
-
     G = GG
     W = WW
     k = kk
     m = k.sum(0) / 2
+    VC = {x: x for x in G}
+    CV = {x: {x} for x in G}
+    print("reinit: new G: ", G)
 
 
 if __name__ == "__main__":
