@@ -111,24 +111,27 @@ def move_to_community(node, new_community):
 def algo():
     init()
     while True:
-        changed_sth = False
+        print("modularity: ", compute_mod(), m)
         for v in VC.keys():
+            NEW, GAIN = None, None
             for c in set(map(VC.get, G[v])):
                 if v in CV[c]:
                     continue
                 if len(CV[c]) == 1 and len(CV[v]) == 1 and c > v:
                     continue  # single-node communities, don't move to upper index
                 gain = compute_gain(v, c)
-                print(">> Gain: ", gain)
-                if gain >= MIN_GAIN:
-                    changed_sth = True
-                    print("algo: przenoszę v=", v, " do c=", c)
-                    move_to_community(v, c)
-        if not changed_sth:
+                if gain < MIN_GAIN:
+                    continue
+                if NEW is None:
+                    NEW, GAIN = c, gain
+                elif gain == GAIN:
+                    NEW = min(NEW, c)
+                elif gain > GAIN:
+                    NEW, GAIN = c, gain
+        if not NEW:
             return
-        print("algo: przed reinit, nowe cv, vc:", CV, VC)
+        move_to_community(v, NEW)
         reinit()
-        print("algo: po reinicie, nowe cv, vc:", CV, VC)
 
 
 def reinit():
@@ -164,14 +167,12 @@ def reinit():
                 kk[VC[out]] += val
 
         WW[frozenset([c, c])] = c_weight
-        print("reinit: ustawiono wage ", c_weight, " dla c=", c)
     G = GG
     W = WW
     k = kk
     m = k.sum(0) / 2
     VC = {x: x for x in G}
     CV = {x: {x} for x in G}
-    print("reinit: new G: ", G)
 
 
 if __name__ == "__main__":
