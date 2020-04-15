@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import numpy as np
 
 parser = argparse.ArgumentParser()
 
@@ -18,6 +19,9 @@ fp = args.f[0]
 v1max, v2max, N = 0, 0, 0
 G = {}
 
+W = {}
+
+k = None
 
 def append_value(dic, key, to_add):
     if dic.get(key) is None:
@@ -30,15 +34,60 @@ with open(fp) as f:
     for line in f.readlines():
         if line[0] == '%':
             continue
-        a = [int(x) for x in line.split()]
+        a = [float(x) for x in line.split()]
+        if (a == []):
+            continue  # --assert last one
         if first:
             assert(len(a) == 3)
             first = False
             v1max = a[0]
             v2max = a[1]
-            N = a[2]
+            assert(v1max == v2max)
+            assert(v1max % 1 == 0)
+            N = int(v1max)
+            assert(a[2] % 1 == 0)
+            E = int(a[2])
+            k = np.zeros(N + 1)
         else:
+            a[0] = int(a[0])
+            a[1] = int(a[1])
+            assert(a[0] <= N)
+            assert(a[1] <= N)
             append_value(G, a[0], a[1])
             append_value(G, a[1], a[0])
+            assert(len(a) < 4)
+            w = a[2] if len(a) > 2 else 1.0
+            W[frozenset([a[0], a[1]])] = w
+            k[a[0]] += w
+            k[a[1]] += w
 
-print(G)
+
+C = N  # nuber of communities
+
+CV = {}  # maps community to list of nodes
+VC = {}  # maps node to it's community
+
+
+def init_communities():
+    for node in range(1, N+1):
+        append_value(CV, node, node)
+        VC[node] = node
+
+# computes e_{i -> C[i]}
+def compute_e(i):
+    neighbors = CV[VC[i]]
+    return sum([W[frozenset(i, n)] for n in neighbors if i != n])
+
+def compute_ac(c):
+    return sum( [ k[i] for i in CV[c] ] )
+
+def compute_mod():
+    assert(k[0] == 0)
+    m = k.sum(0) / 2
+    s1 = sum( [compute_e(node) for node in range(1,N+1)] )
+    s2 = sum( [compute_ac(c)   for c in range(1, C+1)] )
+    return s1 / (2 * m) - s2 / (4 * m ** 2)
+
+if __name__ == "__main__":
+    init_communities()
+    print(compute_mod())
