@@ -153,7 +153,7 @@ NVCC          := $(CUDA_PATH)/bin/nvcc -ccbin $(HOST_COMPILER)
 # internal flags
 NVCCFLAGS   := -m${TARGET_SIZE}
 CCFLAGS     :=
-LDFLAGS     :=
+LDFLAGS     := -lglut -lGLU -lGL
 
 # build flags
 ifeq ($(TARGET_OS),darwin)
@@ -210,7 +210,7 @@ LIBRARIES :=
 ################################################################################
 
 # Gencode arguments
-SMS ?= 20 30 35 37 50 52 60
+SMS ?= 30 35 37 50 52 60
 
 ifeq ($(SMS),)
 $(info >>> WARNING - no SM architectures have been specified - waiving sample <<<)
@@ -237,7 +237,7 @@ endif
 # Target rules
 all: build
 
-build: gpulouvain
+build: gpulouvain 
 
 check.deps:
 ifeq ($(SAMPLE_ENABLED),0)
@@ -246,8 +246,8 @@ else
 	@echo "Sample is ready - all dependencies have been met"
 endif
 
-gpulouvain.o:gpulouvain.cu
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -o $@ -c $<
+gpulouvain.o: gpulouvain.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -O2 -o $@ -c $<
 
 gpulouvain: gpulouvain.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
@@ -262,3 +262,4 @@ clean:
 	rm -rf ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)/gpulouvain
 
 clobber: clean
+
