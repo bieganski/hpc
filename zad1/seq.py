@@ -112,6 +112,7 @@ def algo():
     init()
     while True:
         print("modularity: ", compute_mod(), m)
+        changed_sth = False
         for v in VC.keys():
             NEW, GAIN = None, None
             for c in set(map(VC.get, G[v])):
@@ -120,6 +121,7 @@ def algo():
                 if len(CV[c]) == 1 and len(CV[v]) == 1 and c > v:
                     continue  # single-node communities, don't move to upper index
                 gain = compute_gain(v, c)
+                print("gain: ", gain)
                 if gain < MIN_GAIN:
                     continue
                 if NEW is None:
@@ -128,14 +130,18 @@ def algo():
                     NEW = min(NEW, c)
                 elif gain > GAIN:
                     NEW, GAIN = c, gain
-        if not NEW:
+            if NEW is None:
+                continue
+            print("przenosze ", v, " do ", NEW)
+            move_to_community(v, NEW)
+            changed_sth = True
+        if not changed_sth:
             return
-        move_to_community(v, NEW)
         reinit()
 
 
 def reinit():
-    global G, W, k, m, CV, VC
+    global G, W, k, CV, VC
     GG = {}
     WW = {}
     kk = np.zeros_like(k)
@@ -145,32 +151,41 @@ def reinit():
         c_weight = 0
         GG[c] = set()
         for v in vs:
-            v_inner_ns = vs.intersection(G[v])  # into it's community
-            v_outer_ns = G[v] - v_inner_ns  # outside
+            v_inner_ns = G[v].intersection(vs)  # edges into it's community
+            v_outer_ns = G[v] - v_inner_ns  # edges outside community
 
-            inner_weight = k[list(v_inner_ns)].sum(0)
+            inner_weight = sum([W[frozenset([v, x])] for x in v_inner_ns])
             c_weight += inner_weight
 
+            print("outer dla ", v,  ": ", v_outer_ns)
             for out in v_outer_ns:
                 # update graph description
                 new_out = VC[out]
                 append_value(GG, c, new_out)
 
-                # update edges
+                # update outer edges, only under some circumstance, to make it only once
+                if c > new_out:
+                    continue  # only lower community does instructions below
                 key = frozenset([c, new_out])
                 val = W[frozenset([v, out])]
+                kk[new_out] += val
+                kk[c] += val
                 if WW.get(key) is None:
                     WW[key] = 0
+                print("zwiekszam ", key, " o ", val)
                 WW[key] += val
 
-                kk[c] += val
-                kk[VC[out]] += val
+        if c_weight == 0:  # TODO ujemne wagi
+            continue  # no inner edges
+        append_value(GG, c, c)
+        WW[frozenset([c, c])] = c_weight / 2
+        kk[c] += c_weight / 2
 
-        WW[frozenset([c, c])] = c_weight
+    print(">>> reinit end: k: ", kk)
+    print(">>> reinit end: W: ", WW)
     G = GG
     W = WW
     k = kk
-    m = k.sum(0) / 2
     VC = {x: x for x in G}
     CV = {x: {x} for x in G}
 
@@ -181,4 +196,6 @@ if __name__ == "__main__":
     t1 = datetime.now()
     exec_time = (t1.microsecond - t0.microsecond) / 1000
     print("EXEC_TIME:", exec_time, exec_time)
-
+    if (args.v):
+        print(len(G))
+        # TODO trzeba pamiętać to mapowanie for g in G
