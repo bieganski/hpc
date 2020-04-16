@@ -27,6 +27,7 @@ m = 0
 CV = {}  # maps community to list of nodes
 VC = {}  # maps node to it's community
 
+result_assignment = {}
 
 def append_value(dic, key, to_add):
     if dic.get(key) is None:
@@ -68,7 +69,8 @@ with open(fp) as f:
 
 
 def init_communities():
-    for node in range(1, N+1):
+    for node in G.keys():
+        result_assignment[node] = {node}
         append_value(CV, node, node)
         VC[node] = node
 
@@ -134,6 +136,7 @@ def algo():
                 continue
             print("przenosze ", v, " do ", NEW)
             move_to_community(v, NEW)
+            result_assignment[NEW] = result_assignment[NEW].union(result_assignment[v])
             changed_sth = True
         if not changed_sth:
             return
@@ -196,6 +199,6 @@ if __name__ == "__main__":
     t1 = datetime.now()
     exec_time = (t1.microsecond - t0.microsecond) / 1000
     print("EXEC_TIME:", exec_time, exec_time)
-    if (args.v):
+    if args.v:
         print(len(G))
-        # TODO trzeba pamiętać to mapowanie for g in G
+        print(result_assignment)
