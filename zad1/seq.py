@@ -137,6 +137,7 @@ def algo():
             print("przenosze ", v, " do ", NEW)
             move_to_community(v, NEW)
             result_assignment[NEW] = result_assignment[NEW].union(result_assignment[v])
+            del result_assignment[v]
             changed_sth = True
         if not changed_sth:
             return
@@ -200,5 +201,10 @@ if __name__ == "__main__":
     exec_time = (t1.microsecond - t0.microsecond) / 1000
     print("EXEC_TIME:", exec_time, exec_time)
     if args.v:
-        print(len(G))
         print(result_assignment)
+        res = str(len(G))
+        for k, v in result_assignment.items():
+            res += "\n"
+            res += str(k) + " "
+            res += " ".join(map(str, v))
+        print(res)
