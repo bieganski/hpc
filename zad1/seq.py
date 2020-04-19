@@ -15,6 +15,11 @@ parser.add_argument('-v', required=False, action="store_true",
 
 args = parser.parse_args()
 
+DEBUG = True
+
+def log(*args):
+    print(args) if DEBUG else None
+
 fp = args.f[0]
 MIN_GAIN = args.g[0]
 
@@ -113,7 +118,7 @@ def move_to_community(node, new_community):
 def algo():
     init()
     while True:
-        print("modularity: ", compute_mod(), m)
+        log("modularity: ", compute_mod(), m)
         changed_sth = False
         for v in VC.keys():
             NEW, GAIN = None, None
@@ -123,7 +128,7 @@ def algo():
                 if len(CV[c]) == 1 and len(CV[v]) == 1 and c > v:
                     continue  # single-node communities, don't move to upper index
                 gain = compute_gain(v, c)
-                print("gain: ", gain)
+                log("gain: ", gain)
                 if gain < MIN_GAIN:
                     continue
                 if NEW is None:
@@ -134,7 +139,7 @@ def algo():
                     NEW, GAIN = c, gain
             if NEW is None:
                 continue
-            print("przenosze ", v, " do ", NEW)
+            log("przenosze ", v, " do ", NEW)
             move_to_community(v, NEW)
             result_assignment[NEW] = result_assignment[NEW].union(result_assignment[v])
             del result_assignment[v]
@@ -161,7 +166,7 @@ def reinit():
             inner_weight = sum([W[frozenset([v, x])] for x in v_inner_ns])
             c_weight += inner_weight
 
-            print("outer dla ", v,  ": ", v_outer_ns)
+            log("outer dla ", v,  ": ", v_outer_ns)
             for out in v_outer_ns:
                 # update graph description
                 new_out = VC[out]
@@ -176,7 +181,7 @@ def reinit():
                 kk[c] += val
                 if WW.get(key) is None:
                     WW[key] = 0
-                print("zwiekszam ", key, " o ", val)
+                log("zwiekszam ", key, " o ", val)
                 WW[key] += val
 
         if c_weight == 0:  # TODO ujemne wagi
@@ -185,8 +190,8 @@ def reinit():
         WW[frozenset([c, c])] = c_weight / 2
         kk[c] += c_weight / 2
 
-    print(">>> reinit end: k: ", kk)
-    print(">>> reinit end: W: ", WW)
+    log(">>> reinit end: k: ", kk)
+    log(">>> reinit end: W: ", WW)
     G = GG
     W = WW
     k = kk
@@ -201,7 +206,6 @@ if __name__ == "__main__":
     exec_time = (t1.microsecond - t0.microsecond) / 1000
     print("EXEC_TIME:", exec_time, exec_time)
     if args.v:
-        print(result_assignment)
         res = str(len(G))
         for k, v in result_assignment.items():
             res += "\n"
