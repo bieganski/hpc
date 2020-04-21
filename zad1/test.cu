@@ -4,29 +4,89 @@
 #include <thrust/copy.h>
 #include <thrust/fill.h>
 #include <thrust/sequence.h>
-
+#include <thrust/partition.h>
 #include <iostream>
+
+#include "hasharray.h"
+
+// using namespace std;
+
+typedef HashArray HA;
+
+struct pred {
+    __host__ __device__
+    bool operator()(const int &x) {
+        return x < 3;
+    }
+};
+
+__global__ void kernel(KeyValue* hashtable) {
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    if (tid > 31)
+        return;
+    
+    uint32_t res_key = HA::add(hashtable, 1, 1, 2 << 5);
+}
+
+
+static void HandleError(cudaError_t error, const char *file, int line) {
+    if (error != cudaSuccess) {
+        printf("%s in %s at line %d\n", cudaGetErrorString(error), file, line);
+        exit( EXIT_FAILURE );
+    }
+}
+
+#define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__ ))
+
 
 int main(void)
 {
-    // initialize all ten integers of a device_vector to 1
-    thrust::device_vector<int> D(10, 1);
+    KeyValue* hashtable;
 
-    // set the first seven elements of a vector to 9
-    thrust::fill(D.begin(), D.begin() + 7, 9);
+    HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValue) * (2 << 5)));
+    cudaDeviceSynchronize();
 
-    // initialize a host_vector with the first five elements of D
-    thrust::host_vector<int> H(D.begin(), D.begin() + 5);
+    HA::init(hashtable, 2 << 5);
 
-    // set the elements of H to 0, 1, 2, 3, ...
-    thrust::sequence(H.begin(), H.end());
+    printf("aaa %d", 2 << 5);
 
-    // copy all of H back to the beginning of D
-    thrust::copy(H.begin(), H.end(), D.begin());
+    kernel<<<1, 32>>>(hashtable);
 
-    // print D
-    for(int i = 0; i < D.size(); i++)
-        std::cout << "D[" << i << "] = " << D[i] << std::endl;
-
+    cudaDeviceSynchronize();
     return 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // initialize all ten integers of a device_vector to 1
+    // thrust::device_vector<int> D(10, 1);
+
+    // // set the first seven elements of a vector to 9
+    // thrust::fill(D.begin(), D.begin() + 7, 9);
+
+    // thrust::sequence(D.begin(), D.end());
+
+    // // print D
+    // for(int i = 0; i < D.size(); i++)
+    //     std::cout << "D[" << i << "] = " << D[i] << std::endl;
+
+    // struct pred p;
+    // auto it = thrust::partition(D.begin(), D.end(), p);
+
+
+    // for(int i = 0; i < D.size(); i++)
+    //     std::cout << "D[" << i << "] = " << D[i] << std::endl;
+
+    // cout << endl << *it;

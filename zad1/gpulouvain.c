@@ -9,8 +9,6 @@
 #include <sstream>
 #include <vector>
 
-#include "hasharray.h"
-
 using namespace std;
 
 static float MIN_GAIN;
@@ -88,7 +86,7 @@ std::ifstream get_input_content() {
         return file_stream;
 
     } catch (const char * f) {
-        std::cerr << "Error reading input file" + std::string(FILE_PATH);
+         std::cerr << "Error reading input file" + std::string(FILE_PATH);
         exit(1);
     }
 }
@@ -165,7 +163,9 @@ int main(int argc, char **argv) {
     if (parse_args(argc, argv)) {
         exit(1);
     }
-    
+
+    cout << MIN_GAIN << ", " << FILE_PATH << ", " << VERBOSE;
+
     parse_inut_graph(get_input_content());
 
     return 0;
