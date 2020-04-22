@@ -210,7 +210,7 @@ LIBRARIES :=
 ################################################################################
 
 # Gencode arguments
-SMS ?= 30 35 37 50 52 60
+SMS ?= 35 37 50 52 60
 
 ifeq ($(SMS),)
 $(info >>> WARNING - no SM architectures have been specified - waiving sample <<<)
@@ -237,7 +237,7 @@ endif
 # Target rules
 all: build
 
-build: gpulouvain
+build: gpulouvain test
 
 check.deps:
 ifeq ($(SAMPLE_ENABLED),0)
@@ -253,7 +253,7 @@ utils.o: utils.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
 
 gpulouvain.o: gpulouvain.cu
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -O2 -o $@ -c $<
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -rdc=true -lcudadevrt --expt-extended-lambda -O2 -o $@ -c $<
 
 gpulouvain: gpulouvain.o hasharray.o utils.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)

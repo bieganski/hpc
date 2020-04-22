@@ -2,6 +2,7 @@
 #include <stdio.h>
 
 #include "hasharray.h"
+#include "utils.h"
 
 #ifdef __CUDACC__
 #define CUDA_CALLABLE_MEMBER __device__
@@ -13,16 +14,6 @@ typedef HashArray HA;
 
 static const uint32_t kEmpty = 0xffffffff;
 
-static void HandleError(cudaError_t error, const char *file, int line) {
-    if (error != cudaSuccess) {
-        printf("%s in %s at line %d\n", cudaGetErrorString(error), file, line);
-        exit( EXIT_FAILURE );
-    }
-}
-
-#define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__ ))
-
-
 CUDA_CALLABLE_MEMBER uint32_t hash(uint32_t k, uint32_t table_size) {
     k ^= k >> 16;
     k *= 0x85ebca6b;
@@ -32,10 +23,16 @@ CUDA_CALLABLE_MEMBER uint32_t hash(uint32_t k, uint32_t table_size) {
     return k & (table_size - 1);
 }
 
-__host__ void HA::init(KeyValue* memory, uint32_t num) {
+__host__ void HA::init(KeyValueInt* memory, uint32_t num) {
     assert(kEmpty == 0xffffffff);
     assert((num & kEmpty) == num); // power of 2
-    HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValue) * num));
+    HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueInt) * num));
+}
+
+__host__ void HA::init(KeyValueFloat* memory, uint32_t num) {
+    assert(kEmpty == 0xffffffff);
+    assert((num & kEmpty) == num); // power of 2
+    HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueFloat) * num));
 }
 
 // CUDA_CALLABLE_MEMBER uint32_t HA::insert(KeyValue* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
@@ -99,8 +96,8 @@ CUDA_CALLABLE_MEMBER uint32_t HA::addFloat(KeyValueFloat* hashtable, uint32_t ke
         uint32_t prev_key = atomicCAS(&hashtable[slot].key, kEmpty, key);
         
         if (prev_key == kEmpty) {
-            float prev_val = atomicCAS(&hashtable[slot].value, kEmpty, value);
-            if (prev_val != (float) kEmpty) {
+            uint32_t prev_val = atomicCAS((uint32_t*) &hashtable[slot].value, kEmpty, (uint32_t) value);
+            if (prev_val != kEmpty) {
                 atomicAdd(&hashtable[slot].value, value);
             }
             return slot;

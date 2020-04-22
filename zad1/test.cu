@@ -13,20 +13,22 @@
 
 typedef HashArray HA;
 
-struct pred {
-    __host__ __device__
-    bool operator()(const int &x) {
-        return x < 3;
-    }
-};
+// struct pred {
+//     __host__ __device__
+//     bool operator()(const int &x) {
+//         return x < 3;
+//     }
+// };
 
-__global__ void kernel(KeyValue* hashtable) {
+__global__ void kernel(KeyValueFloat* hashtable) {
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
     if (tid > 31)
         return;
     
-    uint32_t res_key = HA::add(hashtable, 1, 1, 2 << 5);
+    uint32_t res_key = HA::addFloat(hashtable, 1, 1.01, 2 << 5);
+
+    printf("%d: wstawilem pod %d, patrze: %f\n", tid, res_key, hashtable[res_key].value);
 }
 
 
@@ -42,14 +44,12 @@ static void HandleError(cudaError_t error, const char *file, int line) {
 
 int main(void)
 {
-    KeyValue* hashtable;
+    KeyValueFloat* hashtable;
 
-    HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValue) * (2 << 5)));
+    HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValueFloat) * (2 << 5)));
     cudaDeviceSynchronize();
 
     HA::init(hashtable, 2 << 5);
-
-    printf("aaa %d", 2 << 5);
 
     kernel<<<1, 32>>>(hashtable);
 
