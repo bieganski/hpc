@@ -237,7 +237,7 @@ endif
 # Target rules
 all: build
 
-build: test
+build: gpulouvain
 
 check.deps:
 ifeq ($(SAMPLE_ENABLED),0)
@@ -246,18 +246,21 @@ else
 	@echo "Sample is ready - all dependencies have been met"
 endif
 
+hasharray.o: hasharray.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
+
+utils.o: utils.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
+
 gpulouvain.o: gpulouvain.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -O2 -o $@ -c $<
 
-gpulouvain: gpulouvain.o
+gpulouvain: gpulouvain.o hasharray.o utils.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 	$(EXEC) mkdir -p ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 	$(EXEC) cp $@ ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 
 test.o: test.cu
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
-
-hasharray.o: hasharray.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
 
 test: test.o hasharray.o

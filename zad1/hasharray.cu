@@ -38,23 +38,22 @@ __host__ void HA::init(KeyValue* memory, uint32_t num) {
     HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValue) * num));
 }
 
-CUDA_CALLABLE_MEMBER uint32_t HA::insert(KeyValue* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
-    uint32_t slot = hash(key, table_size);
+// CUDA_CALLABLE_MEMBER uint32_t HA::insert(KeyValue* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
+//     uint32_t slot = hash(key, table_size);
 
-    while (true) {
-        uint32_t prev = atomicCAS(&hashtable[slot].key, kEmpty, key);
-        // printf("%d,", prev);
-        // return prev;
-        if (prev == kEmpty || prev == key)
-        {
-            hashtable[slot].value = value;
-            return slot;
-        }
-        slot = (slot + 1) & (table_size - 1);
-    }
-}
+//     while (true) {
+//         uint32_t prev = atomicCAS(&hashtable[slot].key, kEmpty, key);
+//         // printf("%d,", prev);
+//         // return prev;
+//         if (prev == kEmpty || prev == key) {
+//             hashtable[slot].value = value;
+//             return slot;
+//         }
+//         slot = (slot + 1) & (table_size - 1);
+//     }
+// }
 
-CUDA_CALLABLE_MEMBER uint32_t HA::add(KeyValue* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
+CUDA_CALLABLE_MEMBER uint32_t HA::addInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
     uint32_t slot = hash(key, table_size);
 
     while (true) {
@@ -76,7 +75,46 @@ CUDA_CALLABLE_MEMBER uint32_t HA::add(KeyValue* hashtable, uint32_t key, uint32_
 
 
 
-CUDA_CALLABLE_MEMBER uint32_t HA::lookup(KeyValue* hashtable, uint32_t key, uint32_t table_size) {
+CUDA_CALLABLE_MEMBER uint32_t HA::lookupInt(KeyValueInt* hashtable, uint32_t key, uint32_t table_size) {
+    uint32_t slot = hash(key, table_size);
+
+    while (true) {
+        if (hashtable[slot].key == key)
+        {
+            return hashtable[slot].value;
+        }
+        if (hashtable[slot].key == kEmpty)
+        {
+            return kEmpty;
+        }
+        slot = (slot + 1) & (table_size - 1);
+    }
+}
+
+
+CUDA_CALLABLE_MEMBER uint32_t HA::addFloat(KeyValueFloat* hashtable, uint32_t key, float value, uint32_t table_size) {
+    uint32_t slot = hash(key, table_size);
+
+    while (true) {
+        uint32_t prev_key = atomicCAS(&hashtable[slot].key, kEmpty, key);
+        
+        if (prev_key == kEmpty) {
+            float prev_val = atomicCAS(&hashtable[slot].value, kEmpty, value);
+            if (prev_val != (float) kEmpty) {
+                atomicAdd(&hashtable[slot].value, value);
+            }
+            return slot;
+        } else if (prev_key == key) {
+            atomicAdd(&hashtable[slot].value, value);
+            return slot;
+        }
+        slot = (slot + 1) & (table_size - 1);
+    }
+}
+
+
+
+CUDA_CALLABLE_MEMBER float HA::lookupFloat(KeyValueFloat* hashtable, uint32_t key, uint32_t table_size) {
     uint32_t slot = hash(key, table_size);
 
     while (true) {
