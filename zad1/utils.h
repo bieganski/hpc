@@ -1,7 +1,7 @@
 #include <fstream>
 #include <cstdint>
 
-using ret_t = std::tuple<uint32_t, uint32_t*, uint32_t*, float*, float*>; // V_MAX_IDX, V, E, W, k    (W_NUM == E_NUM)
+using ret_t = std::tuple<uint32_t, uint32_t*, uint32_t*, float*, float*, float>; // V_MAX_IDX, V, E, W, k, m    (W_NUM == E_NUM)
 
 extern float MIN_GAIN;
 extern char *FILE_PATH;
@@ -22,4 +22,4 @@ std::ifstream get_input_content();
 
 ret_t parse_inut_graph(std::ifstream content);
 
-__device__ uint32_t next_2_pow(uint32_t n);
+__host__ __device__ uint32_t next_2_pow(uint32_t n);

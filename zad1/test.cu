@@ -26,9 +26,9 @@ __global__ void kernel(KeyValueFloat* hashtable) {
     if (tid > 31)
         return;
     
-    uint32_t res_key = HA::addFloat(hashtable, 1, 1.01, 2 << 5);
+    // uint32_t res_key = HA::addFloat(hashtable, 1, 1.01, 2 << 5);
 
-    printf("%d: wstawilem pod %d, patrze: %f\n", tid, res_key, hashtable[res_key].value);
+    // printf("%d: wstawilem pod %d, patrze: %f\n", tid, res_key, hashtable[res_key].value);
 }
 
 
@@ -51,7 +51,7 @@ int main(void)
 
     HA::init(hashtable, 2 << 5);
 
-    kernel<<<1, 32>>>(hashtable);
+    kernel<<<2, 16>>>(hashtable);
 
     cudaDeviceSynchronize();
     return 0;

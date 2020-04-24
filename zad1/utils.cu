@@ -16,7 +16,8 @@
 static uint32_t* V; // vertices
 static uint32_t* E; // edges
 static float* W; // weights
-static float* k; // sum of node weights
+static float* k; // sum of weights per node
+static float m = 0; // total sum of weights
 
 
 __host__ int parse_args (int argc, char **argv) {
@@ -157,6 +158,7 @@ __host__ ret_t parse_inut_graph(std::ifstream content) {
         tmpW[v2].push_back(w);
         k[v1] += w;
         k[v2] += w;
+        m += w;
     }
 
     uint32_t act = 0;
@@ -168,12 +170,13 @@ __host__ ret_t parse_inut_graph(std::ifstream content) {
         V[i + 1] = act;
     }
 
-    return std::make_tuple(N - 1, V, E, W, k);
+    return std::make_tuple(N - 1, V, E, W, k, m);
 }
 
 
 // https://www.geeksforgeeks.org/smallest-power-of-2-greater-than-or-equal-to-n/
-__device__ uint32_t next_2_pow(uint32_t n) { 
+__host__ __device__ uint32_t next_2_pow(uint32_t n) { 
+    assert(n > 1);
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -188,5 +191,11 @@ __device__ uint32_t next_2_pow(uint32_t n) {
             return n;
     }
     assert(false);
-    return 0xFFFFFFFF; // for compiler to be happy about return anything
+    return 0xFFFFFFFF; // for compiler to be happy about returning anything
+
+
+    // TODO
+    // may be better implementation, check it's corectness
+// https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__INTRINSIC__INT.html
+    // return 1 << (32 - _clz(n - 1) + 1); // +1 because it counts from int most significant bit (31th)
 }

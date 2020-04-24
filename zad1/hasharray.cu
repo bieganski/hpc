@@ -12,7 +12,6 @@
 
 typedef HashArray HA;
 
-static const uint32_t kEmpty = 0xffffffff;
 
 CUDA_CALLABLE_MEMBER uint32_t hash(uint32_t k, uint32_t table_size) {
     k ^= k >> 16;
@@ -24,51 +23,49 @@ CUDA_CALLABLE_MEMBER uint32_t hash(uint32_t k, uint32_t table_size) {
 }
 
 __host__ void HA::init(KeyValueInt* memory, uint32_t num) {
-    assert(kEmpty == 0xffffffff);
-    assert((num & kEmpty) == num); // power of 2
+    assert(hashArrayNull == 0xffffffff);
+    assert((num & hashArrayNull) == num); // power of 2
     HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueInt) * num));
 }
 
 __host__ void HA::init(KeyValueFloat* memory, uint32_t num) {
-    assert(kEmpty == 0xffffffff);
-    assert((num & kEmpty) == num); // power of 2
+    assert(hashArrayNull == 0xffffffff);
+    assert((num & hashArrayNull) == num); // power of 2
     HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueFloat) * num));
 }
 
-// CUDA_CALLABLE_MEMBER uint32_t HA::insert(KeyValue* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
-//     uint32_t slot = hash(key, table_size);
-
-//     while (true) {
-//         uint32_t prev = atomicCAS(&hashtable[slot].key, kEmpty, key);
-//         // printf("%d,", prev);
-//         // return prev;
-//         if (prev == kEmpty || prev == key) {
-//             hashtable[slot].value = value;
-//             return slot;
-//         }
-//         slot = (slot + 1) & (table_size - 1);
-//     }
-// }
-
-CUDA_CALLABLE_MEMBER uint32_t HA::addInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
+CUDA_CALLABLE_MEMBER uint32_t HA::insertInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
     uint32_t slot = hash(key, table_size);
 
     while (true) {
-        uint32_t prev_key = atomicCAS(&hashtable[slot].key, kEmpty, key);
-        
-        if (prev_key == kEmpty) {
-            uint32_t prev_val = atomicCAS(&hashtable[slot].value, kEmpty, value);
-            if (prev_val != kEmpty) {
-                atomicAdd(&hashtable[slot].value, value);
-            }
-            return slot;
-        } else if (prev_key == key) {
-            atomicAdd(&hashtable[slot].value, value);
+        uint32_t prev = atomicCAS(&hashtable[slot].key, hashArrayNull, key);
+        if (prev == hashArrayNull || prev == key) {
+            hashtable[slot].value = value; // no need to lock, at least one write will be successful
             return slot;
         }
         slot = (slot + 1) & (table_size - 1);
     }
 }
+
+// CUDA_CALLABLE_MEMBER uint32_t HA::addInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {
+//     uint32_t slot = hash(key, table_size);
+
+//     while (true) {
+//         uint32_t prev_key = atomicCAS(&hashtable[slot].key, hashArrayNull, key);
+        
+//         if (prev_key == hashArrayNull) {
+//             uint32_t prev_val = atomicCAS(&hashtable[slot].value, hashArrayNull, value);
+//             if (prev_val != hashArrayNull) {
+//                 atomicAdd(&hashtable[slot].value, value);
+//             }
+//             return slot;
+//         } else if (prev_key == key) {
+//             atomicAdd(&hashtable[slot].value, value);
+//             return slot;
+//         }
+//         slot = (slot + 1) & (table_size - 1);
+//     }
+// }
 
 
 
@@ -80,33 +77,39 @@ CUDA_CALLABLE_MEMBER uint32_t HA::lookupInt(KeyValueInt* hashtable, uint32_t key
         {
             return hashtable[slot].value;
         }
-        if (hashtable[slot].key == kEmpty)
+        if (hashtable[slot].key == hashArrayNull)
         {
-            return kEmpty;
+            assert(false);
+            return hashArrayNull;
         }
         slot = (slot + 1) & (table_size - 1);
     }
 }
 
 
-CUDA_CALLABLE_MEMBER uint32_t HA::addFloat(KeyValueFloat* hashtable, uint32_t key, float value, uint32_t table_size) {
-    uint32_t slot = hash(key, table_size);
+// CUDA_CALLABLE_MEMBER uint32_t HA::addFloat(KeyValueFloat* hashtable, uint32_t key, float value, uint32_t table_size) {
+//     uint32_t slot = hash(key, table_size);
 
-    while (true) {
-        uint32_t prev_key = atomicCAS(&hashtable[slot].key, kEmpty, key);
+//     while (true) {
+//         uint32_t prev_key = atomicCAS(&hashtable[slot].key, hashArrayNull, key);
         
-        if (prev_key == kEmpty) {
-            uint32_t prev_val = atomicCAS((uint32_t*) &hashtable[slot].value, kEmpty, (uint32_t) value);
-            if (prev_val != kEmpty) {
-                atomicAdd(&hashtable[slot].value, value);
-            }
-            return slot;
-        } else if (prev_key == key) {
-            atomicAdd(&hashtable[slot].value, value);
-            return slot;
-        }
-        slot = (slot + 1) & (table_size - 1);
-    }
+//         if (prev_key == hashArrayNull) {
+//             uint32_t prev_val = atomicCAS((uint32_t*) &hashtable[slot].value, hashArrayNull, (uint32_t) value);
+//             if (prev_val != hashArrayNull) {
+//                 atomicAdd(&hashtable[slot].value, value);
+//             }
+//             return slot;
+//         } else if (prev_key == key) {
+//             atomicAdd(&hashtable[slot].value, value);
+//             return slot;
+//         }
+//         slot = (slot + 1) & (table_size - 1);
+//     }
+// }
+
+// return new value
+CUDA_CALLABLE_MEMBER float HA::addFloatSpecificPos(KeyValueFloat* hashtable, uint32_t slot, float addend) {
+    return atomicAdd(&hashtable[slot].value, addend);
 }
 
 
@@ -119,9 +122,10 @@ CUDA_CALLABLE_MEMBER float HA::lookupFloat(KeyValueFloat* hashtable, uint32_t ke
         {
             return hashtable[slot].value;
         }
-        if (hashtable[slot].key == kEmpty)
+        if (hashtable[slot].key == hashArrayNull)
         {
-            return kEmpty;
+            assert(false);
+            return hashArrayNull;
         }
         slot = (slot + 1) & (table_size - 1);
     }

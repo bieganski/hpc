@@ -237,7 +237,7 @@ endif
 # Target rules
 all: build
 
-build: gpulouvain test
+build: gpulouvain
 
 check.deps:
 ifeq ($(SAMPLE_ENABLED),0)

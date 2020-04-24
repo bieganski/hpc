@@ -6,6 +6,8 @@
 
 #include <cstdint>
 
+const uint32_t hashArrayNull = 0xFFFFFFFF;
+
 typedef struct KeyValueFloat {
     uint32_t key;
     float value;
@@ -26,16 +28,19 @@ public:
     __host__ static void init(KeyValueFloat* memory, uint32_t num);
 
     // returns key
-    // CUDA_CALLABLE_MEMBER static uint32_t insert(KeyValue* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
+    CUDA_CALLABLE_MEMBER static uint32_t insertInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
 
-    // returns key
-    CUDA_CALLABLE_MEMBER static uint32_t addInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
+    // // returns key
+    // CUDA_CALLABLE_MEMBER static uint32_t addInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
 
     // returns value
     CUDA_CALLABLE_MEMBER static uint32_t lookupInt(KeyValueInt* hashtable, uint32_t key, uint32_t table_size);
 
-    // returns key
-    CUDA_CALLABLE_MEMBER static uint32_t addFloat(KeyValueFloat* hashtable, uint32_t key, float value, uint32_t table_size);
+    // // returns key
+    // CUDA_CALLABLE_MEMBER static uint32_t addFloat(KeyValueFloat* hashtable, uint32_t key, float value, uint32_t table_size);
+
+    // return new value
+    CUDA_CALLABLE_MEMBER static float addFloatSpecificPos(KeyValueFloat* hashtable, uint32_t slot, float addend);
 
     // returns value
     CUDA_CALLABLE_MEMBER static float lookupFloat(KeyValueFloat* hashtable, uint32_t key, uint32_t table_size);
