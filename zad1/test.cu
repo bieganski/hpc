@@ -20,11 +20,22 @@ typedef HashArray HA;
 //     }
 // };
 
-__global__ void kernel(KeyValueFloat* hashtable) {
+__global__ void kernel() { //KeyValueFloat* hashtable
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
 
-    if (tid > 31)
+    if (tid > 30)
         return;
+
+    __syncwarp((1 << 5) - 1);
+
+    // if(tid == 0){
+    //     ;
+    // }
+    // else {
+    //     return;
+    // }
+        
+    // __syncthreads();
     
     // uint32_t res_key = HA::addFloat(hashtable, 1, 1.01, 2 << 5);
 
@@ -42,16 +53,30 @@ static void HandleError(cudaError_t error, const char *file, int line) {
 #define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__ ))
 
 
+// __global__ void kernel() {
+//   __shared__ int semaphore;
+//   semaphore=0;
+//   __syncthreads();
+//   while (true) {
+//     int prev=atomicCAS(&semaphore,0,1);
+//     if (prev==0) {
+//       //critical section
+//       semaphore=0;
+//       break;
+//     }
+//   }
+// }
+
 int main(void)
 {
     KeyValueFloat* hashtable;
 
-    HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValueFloat) * (2 << 5)));
+    // HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValueFloat) * (2 << 5)));
     cudaDeviceSynchronize();
 
-    HA::init(hashtable, 2 << 5);
+    // HA::init(hashtable, 2 << 5);
 
-    kernel<<<2, 16>>>(hashtable);
+    kernel<<<2, 16>>>();
 
     cudaDeviceSynchronize();
     return 0;

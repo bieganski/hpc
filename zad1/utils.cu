@@ -20,7 +20,8 @@ static float* k; // sum of weights per node
 static float m = 0; // total sum of weights
 
 
-__host__ int parse_args (int argc, char **argv) {
+__host__ 
+int parse_args (int argc, char **argv) {
     int gflag = 0, fflag = 0;
     int c;
 
@@ -69,7 +70,8 @@ __host__ int parse_args (int argc, char **argv) {
     return 0;
 }
 
-__host__ std::ifstream get_input_content() {
+__host__ 
+std::ifstream get_input_content() {
     try {
         std::ifstream file_stream{FILE_PATH};
         // std::string file_content((std::istreambuf_iterator<char>(file_stream)),
@@ -91,7 +93,8 @@ __host__ std::ifstream get_input_content() {
 }
 
 
-__host__ ret_t parse_inut_graph(std::ifstream content) {
+__host__ 
+ret_t parse_inut_graph(std::ifstream content) {
     std::stringstream ss;
     ss << content.rdbuf();    
     content.close();
@@ -175,7 +178,8 @@ __host__ ret_t parse_inut_graph(std::ifstream content) {
 
 
 // https://www.geeksforgeeks.org/smallest-power-of-2-greater-than-or-equal-to-n/
-__host__ __device__ uint32_t next_2_pow(uint32_t n) { 
+__host__ __device__ 
+uint32_t next_2_pow(uint32_t n) { 
     assert(n > 1);
     n--;
     n |= n >> 1;
@@ -198,4 +202,46 @@ __host__ __device__ uint32_t next_2_pow(uint32_t n) {
     // may be better implementation, check it's corectness
 // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__INTRINSIC__INT.html
     // return 1 << (32 - _clz(n - 1) + 1); // +1 because it counts from int most significant bit (31th)
+}
+
+
+// TODO: to chyba nie pokazuje najwyższego bitu (od 31)
+__device__ 
+void binprintf(uint32_t v)
+{
+    uint32_t mask = 1 << ((sizeof(uint32_t) << 3) - 1);
+    while (mask) {
+        printf("%u", (v & mask ? 1 : 0));
+        mask >>= 1;
+    }
+    printf("\n");
+}
+
+__device__
+int getGlobalIdx(){
+    return blockIdx.x * blockDim.x * blockDim.y
+    + threadIdx.y * blockDim.x + threadIdx.x;
+}
+
+__global__ 
+void updateSpecific(uint32_t* indices, uint32_t indicesNum, uint32_t* from, uint32_t* to) {
+    int tid = threadIdx.x + (blockIdx.x * blockDim.x);
+    if (tid + 1 > indicesNum) {
+        return;
+    }
+    printf("%d: updatuję %d\n", tid, indices[tid]);
+    to[indices[tid]] = from[indices[tid]];
+}
+
+/**
+ * Max number of threadIdx.x is 2^16, sometimes
+ * we need more but still use only x indexing, thus need to
+ * use several blocks. 
+ */
+__host__ std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads) {
+    if (threads < 1 << 16) {
+        return std::make_pair(1, (uint16_t) threads);
+    }
+    assert(threads < 1 << 26); // max blockIdx.x * threadIdx.x
+    return std::make_pair((uint16_t) (threads / 1 << 16) + 1, (uint16_t) 1 << 16);
 }
