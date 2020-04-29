@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <set>
 
 #include <thrust/device_vector.h>
 #include <thrust/partition.h>
@@ -263,6 +264,26 @@ __global__ void computeEiToCi(float*    __restrict__ ei_to_Ci,
     }
 }
 
+
+__host__
+void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict__ comm) {
+    auto v = std::vector<std::set<uint32_t>> (V_MAX_IDX + 1);
+
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        v[comm[i]].insert(i);
+    }
+
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        if (v[i].size() == 0)
+            continue;
+        
+        printf("%d ", i);
+        PRINT(v[i].begin(), v[i].end());
+        printf("\n");
+    }
+    
+}
+
 // returns gain obtained
 __host__ float reassign_communities(
                         const uint32_t V_MAX_IDX,
@@ -310,15 +331,17 @@ __host__ float reassign_communities(
 
     auto all_nodes_pair = getBlockThreadSplit(numNodes);
 
+    *ei_to_Ci = 0;
     computeEiToCi <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
     cudaDeviceSynchronize();
-    printf("EI 2 CI: %f\n", *ei_to_Ci);
 
     zeroAC(ac);
-    computeAC<<<1, 5>>> (k, ac, comm);  // TODO tu jestesmy
+    computeAC<<<1, 5>>> (k, ac, comm);
 
     cudaDeviceSynchronize();
-    computeMod(*ei_to_Ci, m, ac); // TODO tutaj bug
+    float mod0 = computeMod(*ei_to_Ci, m, ac);
+
+    printf("MOD0 = %f\n", mod0);
 
     while(true) {
         for (int i = 2; ; i++) {
@@ -351,10 +374,72 @@ __host__ float reassign_communities(
 
             it0 = it;
         }
-        break; // TODO
+
+        // OK, we computed new communities for all bins, let's check whether
+        // modularity gain is satisfying
+
+        printf("*****************                 ASSIGNMENT      ****************\n");
+
+        print_comm_assignment(V_MAX_IDX, comm);
+
+
+        *ei_to_Ci = 0;
+        computeEiToCi <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
+        cudaDeviceSynchronize();
+        printf("EI 2 CI: %f\n", *ei_to_Ci);
+
+        zeroAC(ac);
+        computeAC<<<1, 5>>> (k, ac, comm);
+
+        cudaDeviceSynchronize();
+        float mod1 = computeMod(*ei_to_Ci, m, ac);
+
+        float THRESHOLD = 0.1;
+
+        printf("KONIEC _ _ _ MOD GAIN: %f\n", mod1 - mod0);
+        
+        if (mod1 - mod0 < 0) {
+            assert(false);
+        } else if (mod1 - mod0 < THRESHOLD) {
+            break;
+        } else {
+            printf("XXXXXXXXXXXXXX mod 0, 1: %f, %f\n", mod0, mod1);
+            mod0 = mod1;
+        }
     }
 
     return gain;
+}
+
+__global__
+void compute_compressed_comm(const uint32_t V_MAX_IDX,
+                          const uint32_t* __restrict__ comm,
+                          const uint32_t* __restrict__ commSize) {
+    int tid = 1 + getGlobalIdx();
+    assert(tid <= V_MAX_IDX);
+
+    atomicInc(&commSize[comm[tid]], 1);
+}
+
+__host__
+void contract(const uint32_t V_MAX_IDX,
+                          const uint32_t* __restrict__ V, 
+                          const uint32_t* __restrict__ E,
+                          const float*    __restrict__ W,
+                          const float*    __restrict__ k,
+                          const uint32_t* __restrict__ comm) {
+
+    thrust::device_vector<uint32_t> commSize(V_MAX_IDX + 1, 0);
+
+    auto pair = getBlockThreadSplit(V_MAX_IDX - 1);
+    compute_compressed_comm<<<pair.first, pair.second>>> (V_MAX_IDX, comm, thrust::raw_pointer_cast(&commSize[0]));
+
+    // thrust::inclusive_scan(commSize.begin(), commSize.end());
+
+    printf("KONIEC ____ nowe communities \n");
+    PRINT(commSize.begin(), commSize.end());
+
+    return;
 }
 
 
