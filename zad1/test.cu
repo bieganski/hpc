@@ -20,8 +20,14 @@ typedef HashArray HA;
 //     }
 // };
 
-__global__ void kernel() { //KeyValueFloat* hashtable
+__global__ void kernel(float* ptr) { //KeyValueFloat* hashtable
+
+    extern __shared__ float arr[];
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    arr[490000 * 1024 / sizeof(float)] = 0.2;
+
+    *ptr = arr[490000 * 1024 / sizeof(float) - 15 + tid];
 
     if (tid > 30)
         return;
@@ -67,16 +73,31 @@ static void HandleError(cudaError_t error, const char *file, int line) {
 //   }
 // }
 
+__device__ uint32_t CONTRACT_BINS[] = {
+    0,
+    121,
+    385,
+    UINT32_MAX
+};
+
 int main(void)
 {
     KeyValueFloat* hashtable;
 
-    // HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValueFloat) * (2 << 5)));
+    HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValueFloat) * (2 << 5)));
     cudaDeviceSynchronize();
 
+    uint32_t* ptr = (uint32_t*) malloc(4 * 6);
+
+    cudaMemcpyFromSymbol(ptr, CONTRACT_BINS, 4 * 4, 0, cudaMemcpyDeviceToHost);
+
+    cudaDeviceSynchronize();
     // HA::init(hashtable, 2 << 5);
 
-    kernel<<<2, 16>>>();
+    printf("LOL: %d\n", ptr[2]);
+    printf("LOLSIZE: %d\n", sizeof(CONTRACT_BINS));
+
+    // kernel<<<1, 16, 490000 * 1024>>>((float*) hashtable);
 
     cudaDeviceSynchronize();
     return 0;

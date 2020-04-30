@@ -47,3 +47,6 @@ void updateSpecific(uint32_t* indices, uint32_t indicesNum, uint32_t* from, uint
 
 __host__ 
 std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads);
+
+__host__
+void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict__ comm);

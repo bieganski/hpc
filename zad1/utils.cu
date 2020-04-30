@@ -10,6 +10,9 @@
 #include <sstream>
 #include <vector>
 #include <cstring>
+#include <set>
+#include <iterator>
+#include <algorithm>
 
 #include "utils.h"
 
@@ -244,4 +247,23 @@ __host__ std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads) {
     }
     assert(threads < 1 << 26); // max blockIdx.x * threadIdx.x
     return std::make_pair((uint16_t) (threads / 1 << 16) + 1, (uint16_t) 1 << 16);
+}
+
+__host__
+void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict__ comm) {
+    auto v = std::vector<std::set<uint32_t>> (V_MAX_IDX + 1);
+
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        v[comm[i]].insert(i);
+    }
+
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        if (v[i].size() == 0)
+            continue;
+        
+        printf("%d ", i);
+        std::copy(v[i].begin(), v[i].end(), std::ostream_iterator<uint32_t>(std::cout, " "));
+        // PRINT(v[i].begin(), v[i].end());
+        printf("\n");
+    }
 }

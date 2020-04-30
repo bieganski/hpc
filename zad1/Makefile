@@ -252,10 +252,13 @@ hasharray.o: hasharray.cu
 utils.o: utils.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
 
+modopt.o: modopt.cu
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) --expt-extended-lambda -dc -O2 -o $@ -c $<
+
 gpulouvain.o: gpulouvain.cu
 	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -rdc=true -lcudadevrt --expt-extended-lambda -O2 -o $@ -c $<
 
-gpulouvain: gpulouvain.o hasharray.o utils.o
+gpulouvain: gpulouvain.o hasharray.o utils.o modopt.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -o $@ $+ $(LIBRARIES)
 	$(EXEC) mkdir -p ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 	$(EXEC) cp $@ ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
