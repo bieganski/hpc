@@ -58,7 +58,7 @@ __device__ uint32_t BINS[] =
 __global__
 void computeAC(const float* __restrict__ k,
                float*       __restrict__ ac,
-               uint32_t*    __restrict__ comm) {
+               const uint32_t*    __restrict__ comm) {
 
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
     atomicAdd(&ac[comm[tid + 1]], k[tid + 1]);
@@ -86,8 +86,7 @@ __global__ void reassign_nodes(
                         const uint32_t maxDegree,
                         const uint32_t nodesPerBlock,
                         const uint32_t hasharrayEntries,
-                        const float m,
-                        const float minGain) {
+                        const float m) {
 
     extern __shared__ KeyValueFloat hashtables[];
 
@@ -143,6 +142,7 @@ __global__ void reassign_nodes(
     // TODO istnieje funkcja ceilf, tylko zwraca floata
 
     uint32_t mask = __ballot_sync(FULL_MASK, edgeNum < maxDegree / 2);
+    assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2));
 
     if (i_ptr + edgeNum == 0) {
         binprintf(mask);
@@ -184,22 +184,13 @@ __global__ void reassign_nodes(
         // this code executes once per vertex
         float gain = deltaMod + ei_to_Ci / m;
 
-        if (gain >= minGain && newCommIdx < comm[i]) {
+        if (gain > 0 && newCommIdx < comm[i]) {
             newComm[i] = newCommIdx;
             printf("%u: wywalam do communiy %u, bo gain %f\n", i, newCommIdx, gain);
         } else {
             newComm[i] = comm[i];
         }
     }
-}
-
-__host__ 
-float computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_IDX) {
-    auto tmp = thrust::device_vector<float>(V_MAX_IDX + 1);
-    thrust::transform(ac, ac + V_MAX_IDX + 1, tmp.begin(), thrust::square<float>());
-    float sum = thrust::reduce(tmp.begin(), tmp.end(), (int) 0, thrust::plus<float>());
-
-    return ei_to_Ci_sum / m - ( sum / (4 * m * m));
 }
 
 __host__ float reassign_communities_bin(
@@ -213,8 +204,7 @@ __host__ float reassign_communities_bin(
                         uint32_t* __restrict__ comm,
                         uint32_t* __restrict__ newComm,
                         const uint32_t maxDegree,
-                        const float m,
-                        const float minGain) {
+                        const float m) {
     assert(next_2_pow(maxDegree) == maxDegree); // max degrees up to power of 2 // mozna wylaczyc potem
     assert(maxDegree <= WARP_SIZE);
 
@@ -237,12 +227,13 @@ __host__ float reassign_communities_bin(
     printf(">>>> KERNEL RUNNING!\n\n");
 
     reassign_nodes<<<blockNum, dimBlock, SHARED_MEM_SIZE>>> (binNodesNum, binNodes, 
-            V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerComm, m, minGain);
+            V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerComm, m);
 
     return 21.37;
 }
 
-__global__ void computeEiToCi(float*    __restrict__ ei_to_Ci,
+__global__ 
+void computeEiToCi(float*    __restrict__ ei_to_Ci,
                          const uint32_t* __restrict__ V,
                          const uint32_t* __restrict__ E,
                          const float*    __restrict__ W,
@@ -255,12 +246,48 @@ __global__ void computeEiToCi(float*    __restrict__ ei_to_Ci,
         uint32_t comj = comm[ E[V[me] + i] ];
 
         if (my_com == comj) {
-            printf("-- ME:    %d, %d, %f\n", me, comj, W[me + i]);
             atomicAdd(ei_to_Ci, W[me + i]);
         }
     }
 }
 
+__host__ 
+float __computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_IDX) {
+    auto tmp = thrust::device_vector<float>(V_MAX_IDX + 1);
+    thrust::transform(ac, ac + V_MAX_IDX + 1, tmp.begin(), thrust::square<float>());
+    float sum = thrust::reduce(tmp.begin(), tmp.end(), (int) 0, thrust::plus<float>());
+
+    return ei_to_Ci_sum / m - ( sum / (4 * m * m));
+}
+
+
+__host__
+float computeMod(uint32_t V_MAX_IDX,
+                const uint32_t* __restrict__ V,
+                const uint32_t* __restrict__ E,
+                const float*    __restrict__ W,
+                const float*    __restrict__ k,
+                const uint32_t* __restrict__ comm,
+                float* __restrict__ ac,
+                float m) {
+    
+    float* ei_to_Ci;
+    HANDLE_ERROR(cudaHostAlloc((void**)&ei_to_Ci, sizeof(float), cudaHostAllocDefault));
+    *ei_to_Ci = 0;
+    HANDLE_ERROR(cudaHostGetDevicePointer(&ei_to_Ci, ei_to_Ci, 0));
+    
+    auto all_nodes_pair = getBlockThreadSplit(V_MAX_IDX);
+
+    computeEiToCi <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
+    cudaDeviceSynchronize();
+
+    zeroAC(ac, V_MAX_IDX);
+    computeAC<<<all_nodes_pair.first, all_nodes_pair.second>>> (k, ac, comm);
+    cudaDeviceSynchronize();
+
+    printf("TODO: ei2CI: %f\n", *ei_to_Ci);
+    return __computeMod(*ei_to_Ci, m, ac, V_MAX_IDX);
+}
 
 
 __host__ 
@@ -273,14 +300,12 @@ float reassign_communities(
                         float*    __restrict__ ac,
                         uint32_t* __restrict__ comm,
                         uint32_t* __restrict__ newComm,
-                        float*    __restrict__ ei_to_Ci,
                         const float m,
                         const float minGain) {
     // TODO more than one bin
     uint32_t maxDegree = 4;
 
     thrust::device_vector<uint32_t> G(V_MAX_IDX);
-
     thrust::sequence(G.begin(), G.end(), 1);
 
     auto partitionGenerator = [=](int rightIdx) {
@@ -291,38 +316,23 @@ float reassign_communities(
 
     // [0,1) is handled separately (lonely nodes; their modularity impact is 0)
     auto it0 = thrust::partition(G.begin(), G.end(), partitionGenerator(1));
+    auto it = it0;
 
     if (thrust::distance(G.begin(), it0) != 0) {
         // TODO - wywalić to
         assert(false && "single nodes detected!");
     }
+    assert(V_MAX_IDX == thrust::distance(G.begin(), G.end()));
 
-    // those with at least one edge, otherwise no modularity influence
-    // TODO wazne - czy ta zmienna jest potrzebna ? redundancja ?
-    uint32_t numNodes = thrust::distance(it0, G.end());
-
-    printf("XXXXX    all nodes: %d", numNodes);  // TODO check
     
 
-    decltype(it0) it = it0;
-    float gain = 0.0;
-
-
-    auto all_nodes_pair = getBlockThreadSplit(numNodes);
-
-    *ei_to_Ci = 0;
-    computeEiToCi <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
-    cudaDeviceSynchronize();
-
-    zeroAC(ac, V_MAX_IDX);
-    computeAC<<<all_nodes_pair.first, all_nodes_pair.second>>> (k, ac, comm);
-
-    cudaDeviceSynchronize();
-    float mod0 = computeMod(*ei_to_Ci, m, ac, V_MAX_IDX);
-
+    float mod0, mod1;    
+    mod0 = computeMod(V_MAX_IDX, V, E, W, k, comm, ac, m);
     printf("MOD0 = %f\n", mod0);
 
     while(true) {
+
+        // for each bin sequentially computes new communities
         for (int i = 2; ; i++) {
             it = thrust::partition(it0, G.end(), partitionGenerator(i));
             assert(it == G.end()); // TODO wywalić
@@ -334,15 +344,16 @@ float reassign_communities(
             uint32_t* binNodes = RAW(it0);
 
             printf(">>>BIN RUN: running %u nodes in bin, i (right)=%d\n", binNodesNum, i);
-            reassign_communities_bin(binNodes, binNodesNum, V, E, W, k, ac, comm, newComm, maxDegree, m, minGain);
+            reassign_communities_bin(binNodes, binNodesNum, V, E, W, k, ac, comm, newComm, maxDegree, m);
 
             cudaDeviceSynchronize();
 
             auto pair = getBlockThreadSplit(binNodesNum);
 
-            printf("before update:\n");
-            PRINT(comm + 1, comm + numNodes + 1);
-            printf("\n");
+            // printf("before update:\n");
+            // PRINT(comm + 1, comm + numNodes + 1);
+            // printf("\n");
+
             // update newComm table
             updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm);
             cudaDeviceSynchronize();
@@ -361,34 +372,24 @@ float reassign_communities(
 
         print_comm_assignment(V_MAX_IDX, comm);
 
+        mod1 = computeMod(V_MAX_IDX, V, E, W, k, comm, ac, m);
 
-        *ei_to_Ci = 0;
-        computeEiToCi <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
-        cudaDeviceSynchronize();
-        printf("EI 2 CI: %f\n", *ei_to_Ci);
-
-        zeroAC(ac, V_MAX_IDX);
-        computeAC<<<1, 5>>> (k, ac, comm);
-
-        cudaDeviceSynchronize();
-        float mod1 = computeMod(*ei_to_Ci, m, ac, V_MAX_IDX);
-
-        float THRESHOLD = 0.1;
-
-        printf("KONIEC _ _ _ MOD GAIN: %f\n", mod1 - mod0);
+        printf("END: mod gain: %f\n", mod1 - mod0);
 
         if (mod1 - mod0 < 0) {
             assert(false);
-        } else if (mod1 - mod0 < THRESHOLD) {
+        } else if (mod1 - mod0 < minGain) {
 
             contract(V_MAX_IDX, V, E, W, k, comm);
+            printf("\n*****************                 CONTRACT                 ****************\n");
+            print_comm_assignment(V_MAX_IDX, comm);
             cudaDeviceSynchronize();
             break;
         } else {
-            printf("XXXXXXXXXXXXXX mod 0, 1: %f, %f\n", mod0, mod1);
+            printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
             mod0 = mod1;
         }
     }
 
-    return gain;
+    return mod1;
 }

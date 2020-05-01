@@ -23,15 +23,17 @@ CUDA_CALLABLE_MEMBER uint32_t hash(uint32_t k, uint32_t table_size) {
 }
 
 __host__ void HA::init(KeyValueInt* memory, uint32_t num) {
-    assert(hashArrayNull == 0xffffffff);
-    assert((num & hashArrayNull) == num); // power of 2
-    HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueInt) * num));
+    assert(false);
+    // assert(hashArrayNull == 0xffffffff);
+    // assert((num & hashArrayNull) == num); // power of 2
+    // HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueInt) * num));
 }
 
 __host__ void HA::init(KeyValueFloat* memory, uint32_t num) {
-    assert(hashArrayNull == 0xffffffff);
-    assert((num & hashArrayNull) == num); // power of 2
-    HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueFloat) * num));
+    assert(false);
+    // assert(hashArrayNull == 0xffffffff);
+    // assert((num & hashArrayNull) == num); // power of 2
+    // HANDLE_ERROR(cudaMemset(memory, 0xff, sizeof(KeyValueFloat) * num));
 }
 
 CUDA_CALLABLE_MEMBER uint32_t HA::insertInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size) {

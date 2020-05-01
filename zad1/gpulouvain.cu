@@ -125,76 +125,119 @@ void compute_comm_neighbors(
     const uint32_t* __restrict__ binCommunities,
     const uint32_t* __restrict__ vertexStart,
     const uint32_t* __restrict__ compressedComm,
-    const uint32_t* __restrict__ commDegree,
+    const uint32_t* __restrict__ edgePos,
     const uint32_t* __restrict__ WTF,
-    const uint32_t hasharrayEntries
+    const uint32_t hasharrayEntries,
+    uint32_t* __restrict__ newV,
+    uint32_t* __restrict__ newE,
+    float*    __restrict__ newW,
+    uint32_t* __restrict__ freeIndices
 ) {
     
     extern __shared__ KeyValueFloat hashtables[];
 
-    int myCommPtr = threadIdx.y + (blockIdx.y * blockDim.y);
-    int myEdgePtr = threadIdx.x + (blockIdx.x * blockDim.x);
+    int myCommPtr = blockIdx.x; // threadIdx.y + (blockIdx.y * blockDim.y);
+    int myEdgePtr = threadIdx.x; //  + (blockIdx.x * blockDim.x);
 
     uint32_t myComm = binCommunities[myCommPtr];
 
     uint32_t firstNodePtrIncl = vertexStart[myComm];
     uint32_t lastNodePtrExcl  = vertexStart[myComm + 1];
 
-    printf("MY _COMCMO: %d   ,   MY_EDGE: %d, FIRST: %d, LAST: %d\n", myComm, myEdgePtr, firstNodePtrIncl, lastNodePtrExcl);
-
-    // looking for my node and edge
-    uint32_t myEdge = -1;
-    uint32_t myNode = -1;
-    uint32_t edgeIdx = -1;
-
-    uint32_t offset = WTF[firstNodePtrIncl]; // TODO benchmark bez tego
-    
-    for (int i = firstNodePtrIncl; i < lastNodePtrExcl; i++) {
-        if (myEdgePtr < WTF[i + 1] - offset) {
-            myNode = compressedComm[i];
-            // printf("%d: znalazlem dla myPtrEdge: %d\n", myNode, myEdgePtr);
-            edgeIdx = myEdgePtr - (WTF[i] - WTF[firstNodePtrIncl]);
-            myEdge = E[V[myNode] + edgeIdx];
-            // printf("uuuuu  --- --- %d\n", edgeIdx);
-            break;
-        } else if (i == lastNodePtrExcl - 1) {
-            // they don't need me :(
-            // printf("wychodze bo mnie nie potrzebują: %d, %d\n", myComm, myEdgePtr);
-            return ;
-        }
-    }
-
-    __syncthreads();
-    
-    printf("Comm: %d, Node: %d, Neigh: %d\n", myComm, myNode, myEdge);
-
-    KeyValueFloat* hashWeight = (KeyValueFloat*) hashtables + myCommPtr * (2 * hasharrayEntries);
+    KeyValueFloat* hashWeight = (KeyValueFloat*) hashtables; // + myCommPtr * (2 * hasharrayEntries);
     KeyValueInt*   hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
 
-    // TODO tu jest za dużo roboty
-    for (int i = 0; i < hasharrayEntries; i++) {
-        hashWeight[i].key = hashArrayNull;
-        hashWeight[i].value = (float) 0;
-        hashComm[i].key = hashArrayNull;
-        hashComm[i].value = hashArrayNull;
+    for (int i = myEdgePtr; i < hasharrayEntries; i += WARP_SIZE) {
+        hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
+        // hashWeight[i].key = hashArrayNull;
+        // hashWeight[i].value = (float) 0;
+        hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
+        // hashComm[i].key = hashArrayNull;
+        // hashComm[i].value = hashArrayNull;
     }
 
-
-    // I know who am I, now add my neighbor to sum of weights
-
-    // TODO zeroing hasharrays
+    __syncwarp();
 
     uint32_t insertedByMe = 0;
+    uint32_t start = firstNodePtrIncl;
+    uint32_t offset = WTF[firstNodePtrIncl]; // TODO benchmark bez tego
 
-    printf( "%d->%d: dodaje do haszarray wage %f, entries: %d\n", myNode, myEdge, W[V[myNode] + edgeIdx], hasharrayEntries);
-    if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdge], comm[myEdge], W[V[myNode] + edgeIdx], hasharrayEntries) ) {
-        insertedByMe++;
-    } else {
-        printf("ooops! mamy konflikt!\n");
+    bool finish = false; // cannot use early return because of usage of warp-level primitives
+    while(true) {
+
+        // looking for my node and edge
+        uint32_t myEdge = -1;
+        uint32_t myNode = -1;
+        uint32_t edgeIdx = -1;
+
+        // printf("debug: %d, %d\n", start, lastNodePtrExcl);
+        // if (start >= lastNodePtrExcl)
+        //     return ;
+        for (uint32_t i = start; !finish && (i < lastNodePtrExcl); i++) {
+            if (myEdgePtr < WTF[i + 1] - offset) {
+                myNode = compressedComm[i];
+                start = i; // for next iteration
+                edgeIdx = myEdgePtr - (WTF[i] - offset);
+                myEdge = E[V[myNode] + edgeIdx];
+                printf("%d: dla myPtrEdge: %d znalazlem edge %d (edgeIdx = %d)\n", myNode, myEdgePtr, myEdge, edgeIdx);
+                break;
+            } else if (i == lastNodePtrExcl - 1) {
+                // they don't need me :(
+                // printf("wychodze bo mnie nie potrzebują: %d, %d\n", myComm, myEdgePtr);
+                finish = true;
+            }
+        }
+
+        if (finish)
+            break;
+
+        // I know who am I, now add my neighbor to sum of weights
+        printf( "%d->%d: dodaje do haszarray wage %f, entries: %d\n", myNode, myEdge, W[V[myNode] + edgeIdx], hasharrayEntries);
+        if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdge], comm[myEdge], W[V[myNode] + edgeIdx], hasharrayEntries) ) {
+            insertedByMe++;
+        } else {
+            printf("ooops! mamy konflikt!\n");
+        }
+
+        myEdgePtr += WARP_SIZE;
+        printf("%d: inserted by me: %d\n", myEdgePtr % WARP_SIZE, insertedByMe);
+    } // while(true)
+
+    // now, compute number of totally inserted in this warp's community
+
+    int mask = __activemask();
+
+    // binprintf(mask);
+
+    assert(mask == FULL_MASK);
+
+    for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2)
+        insertedByMe += __shfl_down_sync(mask, insertedByMe, offset); // only warp with idx == 0 keeps proper value
+
+    
+    int leader = __ffs(mask) - 1; // = 0 // TODO assumption: zero-idx-thread is alive
+
+    uint32_t commNeighborsNum = __shfl_sync(mask, insertedByMe, leader);
+
+    int myEdgePtr0 = threadIdx.x;
+    if (myEdgePtr0 == 0) {
+        // WARNING: we use old community id, because we already know free E indices!
+        newV[myComm] = commNeighborsNum; // will be computed prefix sum on it later
     }
 
-
-
+    assert(mask == FULL_MASK); // !!!!!
+    uint32_t idx0 = edgePos[myComm];
+    // if (myEdgePtr0 == 0) {
+    //     printf("%d: our idx0: %d\n", myComm, idx0);
+    // }
+    for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
+        if (hashComm[i].key != hashArrayNull) {
+            uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
+            newE[idx0 + myIdx] = hashComm[i].value;
+            newW[idx0 + myIdx] = hashWeight[i].value;
+            // printf("%d: dodaje sasiada %d pod idx %d\n", myComm, hashComm[i].value, idx0 + myIdx); 
+        }
+    }
 }
 
 
@@ -209,11 +252,13 @@ void contract(const uint32_t V_MAX_IDX,
     // TODO przenieśc je wyżej, żeby alokować tylko raz
     thrust::device_vector<uint32_t> commSize(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> commDegree(V_MAX_IDX + 1, 0);
+    thrust::device_vector<uint32_t> edgePos(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> newID(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> vertexStart(V_MAX_IDX + 2, 0);
     thrust::device_vector<uint32_t> tmpCounter(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> compressedComm(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> commSeq(V_MAX_IDX + 1, 0);
+    thrust::device_vector<uint32_t> freeIndices(V_MAX_IDX + 1, 0);
 
     thrust::device_vector<uint32_t> WTF(V_MAX_IDX + 1 , 0);
 
@@ -246,6 +291,11 @@ void contract(const uint32_t V_MAX_IDX,
     printf("\nCOMPRESSED COMM: \n");
     thrust::copy(compressedComm.begin(), compressedComm.end(), std::ostream_iterator<uint32_t>(std::cout, " "));
 
+    thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
+
+    printf("EDGE POS: \n");
+    thrust::copy(edgePos.begin(), edgePos.end(), std::ostream_iterator<uint32_t>(std::cout, " "));
+
 
     auto commDegreeLambda = RAW(commDegree); // you cannot use thrust's vector in device code
 
@@ -256,6 +306,7 @@ void contract(const uint32_t V_MAX_IDX,
     };
 
     // TODO to też powinno być na zewnątrz
+    // TODO free
     uint32_t* contractBinsHost = (uint32_t*) malloc(sizeof(CONTRACT_BINS) / sizeof(uint32_t));
     cudaMemcpyFromSymbol(contractBinsHost, CONTRACT_BINS, sizeof(CONTRACT_BINS), 0, cudaMemcpyDeviceToHost);
 
@@ -270,11 +321,11 @@ void contract(const uint32_t V_MAX_IDX,
     auto it0 = thrust::partition(commSeq.begin(), commSeq.end(), partitionGenerator(0));
     auto it = it0;
     for (int i = 1; ; i++) {
+
         if (it0 == commSeq.end()) {
-            printf("llsldlsldsldsldsldsl\n");
             break;
         }
-
+        
         it = thrust::partition(it0, commSeq.end(), partitionGenerator(i));
 
         // ok, let's handle communities with same degree boundary
@@ -285,21 +336,73 @@ void contract(const uint32_t V_MAX_IDX,
         printf("Num comm: %d\n", totalNumCommunities);
 
         uint32_t hashArrayEntriesPerComm = degUpperBound; // TODO customize this
-        uint32_t hashArrayEntriesPerBlock = SHARED_MEM_SIZE / sizeof(KeyValueInt); // should be 6144
-        uint32_t maxNumCommunitiesPerBlock = hashArrayEntriesPerBlock / (2 * hashArrayEntriesPerComm);
+        // uint32_t hashArrayEntriesPerBlock = SHARED_MEM_SIZE / sizeof(KeyValueInt); // should be 6144
+        // uint32_t maxNumCommunitiesPerBlock = hashArrayEntriesPerBlock / (2 * hashArrayEntriesPerComm);
 
-        printf("MAX COMM PER BLOCK: %d\n", maxNumCommunitiesPerBlock);
-        uint32_t numCommunities = std::min(totalNumCommunities, maxNumCommunitiesPerBlock);
+        // printf("MAX COMM PER BLOCK: %d\n", maxNumCommunitiesPerBlock);
+        // uint32_t numCommunities = std::min(totalNumCommunities, maxNumCommunitiesPerBlock);
         
-        dim3 dimBlock(degUpperBound, numCommunities); // x per edges, y per nodes
-        uint16_t blockNum = ceil((float) totalNumCommunities / (float) maxNumCommunitiesPerBlock);
-        printf("DIMS: %d, %d, BLOKI: %d\n", degUpperBound, numCommunities, blockNum);
+        // dim3 dimBlock(degUpperBound, numCommunities); // x per edges, y per nodes
+        // uint16_t blockNum = ceil((float) totalNumCommunities / (float) maxNumCommunitiesPerBlock);
+        // printf("DIMS: %d, %d, BLOKI: %d\n", degUpperBound, numCommunities, blockNum);
         // TODO shm zeroing
 
-        compute_comm_neighbors <<<blockNum, dimBlock, SHARED_MEM_SIZE>>> (V, E, W, comm, RAW(it0),
-            RAW(vertexStart), RAW(compressedComm), RAW(commDegree), RAW(WTF), hashArrayEntriesPerComm);
+        // compute_comm_neighbors <<<blockNum, dimBlock, SHARED_MEM_SIZE>>> (V, E, W, comm, RAW(it0),
+        //     RAW(vertexStart), RAW(compressedComm), RAW(commDegree), RAW(WTF), hashArrayEntriesPerComm);
+
+        // printf("config: %d, %d, %d\n", totalNumCommunities, WARP_SIZE, sizeof(KeyValueInt) * (2 * hashArrayEntriesPerComm));
+        uint32_t E_size = V[V_MAX_IDX + 1];
+        printf("E size: %d\n", E_size);
+        thrust::device_vector<uint32_t> newV(V_MAX_IDX + 2, 0);
+        thrust::device_vector<uint32_t> newE(E_size, 0);
+        thrust::device_vector<float>    newW(E_size, 0);
+
+        compute_comm_neighbors <<< totalNumCommunities, WARP_SIZE, sizeof(KeyValueInt) * (2 * hashArrayEntriesPerComm) >>> 
+            (
+                V, E, W, comm, 
+                RAW(it0),
+                RAW(vertexStart), 
+                RAW(compressedComm), 
+                RAW(edgePos), 
+                RAW(WTF), 
+                hashArrayEntriesPerComm, 
+                RAW(newV), 
+                RAW(newE), 
+                RAW(newW), 
+                RAW(freeIndices)
+            );
+
 
         cudaDeviceSynchronize();
+
+        
+
+        printf("\newID:");
+        thrust::copy(newID.begin(), newID.end(), 
+            std::ostream_iterator<uint32_t>(std::cout, " "));
+        printf("\nnowe V:");
+        thrust::copy(newV.begin(), newV.end(), 
+            std::ostream_iterator<uint32_t>(std::cout, " "));
+        printf("\nnowe E:");
+        thrust::copy(newE.begin(), newE.end(), 
+            std::ostream_iterator<uint32_t>(std::cout, " "));
+        printf("\nnowe W:");
+        thrust::copy(newW.begin(), newW.end(), 
+            std::ostream_iterator<float>(std::cout, " "));
+
+        thrust::device_vector<uint32_t> realNewE(vertexStart.size() - 1);
+        thrust::device_vector<uint32_t> realNewW(newW.size());
+
+        thrust::copy_if(newE.begin(), newE.end(), realNewE.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
+        thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
+
+
+        printf("\n prawdziwe E:");
+        thrust::copy(realNewE.begin(), realNewE.end(), 
+            std::ostream_iterator<float>(std::cout, " "));
+        printf("\n prawdziwe W:");
+        thrust::copy(realNewW.begin(), realNewW.end(), 
+            std::ostream_iterator<float>(std::cout, " "));
 
         it0 = it; // it0 points to first node that wasn't processed yet
     }
@@ -343,25 +446,18 @@ int main(int argc, char **argv) {
 
     HANDLE_ERROR(cudaHostAlloc((void**)&tmp, sizeof(uint32_t) * (V_MAX_IDX + 1), cudaHostAllocDefault));
     for (int i = 0; i <= V_MAX_IDX; i++) {
-        tmp[i] = i;
+        tmp[i] = i; // each node is in it's own community at the beginning
     }
     HANDLE_ERROR(cudaHostGetDevicePointer(&comm, tmp, 0));
-    // TODO ogarnąć to
-    // auto _ei_to_Ci = thrust::device_vector<float>(V_MAX_IDX + 1, 0);
-    // float* ei_to_Ci = thrust::raw_pointer_cast(&_ei_to_Ci[0]);
-
-    float* ei_to_Ci;
-    HANDLE_ERROR(cudaHostAlloc((void**)&tmp, sizeof(float), cudaHostAllocDefault));
-    *tmp = (float) 0;
-    HANDLE_ERROR(cudaHostGetDevicePointer(&ei_to_Ci, tmp, 0));
-    
 
     cudaDeviceSetSharedMemConfig(cudaSharedMemBankSizeEightByte); // TODO customize
-    // cudaFuncSetCacheConfig(reassign_nodes, cudaFuncCachePreferShared);
+    // cudaFuncSetCacheConfig(reassign_nodes, cudaFuncCachePreferShared); // TODO
 
     cudaDeviceSynchronize();
 
-    float gain = reassign_communities(V_MAX_IDX, V, E, W, k, ac, comm, newComm, ei_to_Ci, m, MIN_GAIN);
+    float mod = reassign_communities(V_MAX_IDX, V, E, W, k, ac, comm, newComm, m, MIN_GAIN);
+
+    printf("end modularity: %f\n", mod);
 
     // cudaFree(V);
     return 0;

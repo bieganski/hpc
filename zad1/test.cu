@@ -13,6 +13,18 @@
 
 typedef HashArray HA;
 
+
+static void HandleError(cudaError_t error, const char *file, int line) {
+    if (error != cudaSuccess) {
+        printf("%s in %s at line %d\n", cudaGetErrorString(error), file, line);
+        exit( EXIT_FAILURE );
+    }
+}
+
+#define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__ ))
+#define FULL_MASK 0xFFFFFFFF
+
+
 // struct pred {
 //     __host__ __device__
 //     bool operator()(const int &x) {
@@ -20,19 +32,50 @@ typedef HashArray HA;
 //     }
 // };
 
-__global__ void kernel(float* ptr) { //KeyValueFloat* hashtable
+
+__device__ 
+void binprintf(uint32_t v)
+{
+    uint32_t mask = 1 << ((sizeof(uint32_t) << 3) - 1);
+    while (mask) {
+        printf("%u", (v & mask ? 1 : 0));
+        mask >>= 1;
+    }
+    printf("\n");
+}
+__device__ __forceinline__ unsigned int __laneid() { unsigned int laneid; asm volatile ("mov.u32 %0, %laneid;" : "=r"(laneid)); return laneid; }
+
+__global__ 
+void wtf(uint32_t* ptr) { //KeyValueFloat* hashtable
 
     extern __shared__ float arr[];
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
+    printf("Tid: %d\n", __laneid());
 
-    arr[490000 * 1024 / sizeof(float)] = 0.2;
 
-    *ptr = arr[490000 * 1024 / sizeof(float) - 15 + tid];
-
-    if (tid > 30)
+    if (tid  > 15)
         return;
 
-    __syncwarp((1 << 5) - 1);
+    int mask = FULL_MASK; // __activemask(); // __ballot_sync(FULL_MASK, 1);
+    int val = 1;
+    for (int offset = 32 / 2; offset > 0; offset /= 2)
+        val += __shfl_down_sync(FULL_MASK, val, offset); // only warp with idx == 0 keeps proper value
+
+
+    // int leader = __ffs(mask) - 1;
+    // if (tid == 0) {
+    //     printf("leader = %d\n", leader);
+    //     printf("mask:\n");
+    //     binprintf(mask);
+    // }
+    // int val = __laneid() == leader ? 5 : 1;
+
+    // int res = __shfl_sync(mask, val, leader);
+
+    if (tid == 0)
+        printf("val = %d\n", val);
+
+
 
     // if(tid == 0){
     //     ;
@@ -47,16 +90,6 @@ __global__ void kernel(float* ptr) { //KeyValueFloat* hashtable
 
     // printf("%d: wstawilem pod %d, patrze: %f\n", tid, res_key, hashtable[res_key].value);
 }
-
-
-static void HandleError(cudaError_t error, const char *file, int line) {
-    if (error != cudaSuccess) {
-        printf("%s in %s at line %d\n", cudaGetErrorString(error), file, line);
-        exit( EXIT_FAILURE );
-    }
-}
-
-#define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__ ))
 
 
 // __global__ void kernel() {
@@ -84,55 +117,23 @@ int main(void)
 {
     KeyValueFloat* hashtable;
 
-    HANDLE_ERROR(cudaMalloc((void**) &hashtable, sizeof(KeyValueFloat) * (2 << 5)));
+    HANDLE_ERROR(cudaHostAlloc((void**)&hashtable, sizeof(KeyValueFloat) * (2 << 5), cudaHostAllocDefault));
     cudaDeviceSynchronize();
 
-    uint32_t* ptr = (uint32_t*) malloc(4 * 6);
+    // uint32_t* ptr = (uint32_t*) malloc(4 * 6);
 
-    cudaMemcpyFromSymbol(ptr, CONTRACT_BINS, 4 * 4, 0, cudaMemcpyDeviceToHost);
+    // cudaMemcpyFromSymbol(ptr, CONTRACT_BINS, 4 * 4, 0, cudaMemcpyDeviceToHost);
 
     // cudaDeviceSynchronize();
     // HA::init(hashtable, 2 << 5);
 
-    printf("LOL: %d\n", ptr[2]);
-    printf("LOLSIZE: %d\n", sizeof(CONTRACT_BINS));
+    // printf("LOL: %d\n", ptr[2]);
+    // printf("LOLSIZE: %d\n", sizeof(CONTRACT_BINS));
 
-    // kernel<<<1, 16, 490000 * 1024>>>((float*) hashtable);
+    wtf<<<1, 32, 48 * 1024>>>((uint32_t*) hashtable);
 
     cudaDeviceSynchronize();
+
+    printf("WYNIK: %d", * ((int*) hashtable));
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // initialize all ten integers of a device_vector to 1
-    // thrust::device_vector<int> D(10, 1);
-
-    // // set the first seven elements of a vector to 9
-    // thrust::fill(D.begin(), D.begin() + 7, 9);
-
-    // thrust::sequence(D.begin(), D.end());
-
-    // // print D
-    // for(int i = 0; i < D.size(); i++)
-    //     std::cout << "D[" << i << "] = " << D[i] << std::endl;
-
-    // struct pred p;
-    // auto it = thrust::partition(D.begin(), D.end(), p);
-
-
-    // for(int i = 0; i < D.size(); i++)
-    //     std::cout << "D[" << i << "] = " << D[i] << std::endl;
-
-    // cout << endl << *it;

@@ -45,6 +45,11 @@ public:
     // returns value
     CUDA_CALLABLE_MEMBER static float lookupFloat(KeyValueFloat* hashtable, uint32_t key, uint32_t table_size);
 
+    /**
+     * Finds for place for `key` in h1 (which is isomorphic with h2), when found (empty or occupied by same key),
+     * it atomic adds v2 to h2 table at same idx.
+     * Returns true if occupied new slot, false otherwise.
+     */ 
     CUDA_CALLABLE_MEMBER static bool insertWithFeedback(KeyValueInt* h1, KeyValueFloat* h2, uint32_t key, uint32_t v1, float v2, uint32_t table_size);
 
     // static void delete_key(KeyValue* hashtable, uint32_t key)
