@@ -9,18 +9,19 @@ extern char *FILE_PATH;
 extern bool VERBOSE;
 
 __host__
-static void HandleError(cudaError_t error, const char *file, int line) {
-    if (error != cudaSuccess) {
-        printf("%s in %s at line %d\n", cudaGetErrorString(error), file, line);
-        exit( EXIT_FAILURE );
-    }
-}
+void HandleError(cudaError_t error, const char *file, int line);
 
 #define HANDLE_ERROR(err) (HandleError(err, __FILE__, __LINE__ ))
 
 #define PRINT(begin, end)   thrust::copy((begin), (end), std::ostream_iterator<decltype(*begin)>(std::cout, " "));
 
 #define FULL_MASK 0xffffffff
+
+#define RAW(vec) (thrust::raw_pointer_cast(&(vec)[0]))
+
+#define WARP_SIZE 32
+#define SHARED_MEM_SIZE (48 * 1024)
+
 
 
 __host__

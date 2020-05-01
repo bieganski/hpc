@@ -45,5 +45,7 @@ public:
     // returns value
     CUDA_CALLABLE_MEMBER static float lookupFloat(KeyValueFloat* hashtable, uint32_t key, uint32_t table_size);
 
+    CUDA_CALLABLE_MEMBER static bool insertWithFeedback(KeyValueInt* h1, KeyValueFloat* h2, uint32_t key, uint32_t v1, float v2, uint32_t table_size);
+
     // static void delete_key(KeyValue* hashtable, uint32_t key)
 };

@@ -94,7 +94,7 @@ __global__ void reassign_nodes(
     assert(next_2_pow(maxDegree) == maxDegree); // maxDegree is power of 2         TODO usunąć przy wiekszych grafach
     
     int i_ptr = threadIdx.y + (blockIdx.y * blockDim.y); // my node pointer
-    int edgeNum = threadIdx.x; // my edge pointer
+    int edgeNum = threadIdx.x; // my edge pointer WTF dlaczego nie ma blockidx?
     int i = binNodes[i_ptr];
 
     printf("XXXXXXXXXXXXXXXX     x + y: %u + %u ||| ||  %d\n", i_ptr, edgeNum, getGlobalIdx());
@@ -218,26 +218,26 @@ __host__ float reassign_communities_bin(
     assert(next_2_pow(maxDegree) == maxDegree); // max degrees up to power of 2 // mozna wylaczyc potem
     assert(maxDegree <= WARP_SIZE);
 
-    uint32_t hashArrayEntriesPerNode = next_2_pow(maxDegree); // TODO customize this, maybe check 2 * maxDegree?
+    uint32_t hashArrayEntriesPerComm = next_2_pow(maxDegree); // TODO customize this, maybe check 2 * maxDegree?
 
     assert(sizeof(KeyValueFloat) == sizeof(KeyValueInt));
-    uint32_t hashArrayEntriesPerBlock = SHARED_MEM_SIZE / sizeof(KeyValueInt); // should be 384
+    uint32_t hashArrayEntriesPerBlock = SHARED_MEM_SIZE / sizeof(KeyValueInt); // should be 6144
 
     // remark, that we need 2 hash arrays per node
-    uint32_t threadNum = std::min(binNodesNum, hashArrayEntriesPerBlock / (2 * hashArrayEntriesPerNode));
+    uint32_t threadNum = std::min(binNodesNum, hashArrayEntriesPerBlock / (2 * hashArrayEntriesPerComm));
 
-    uint32_t blockNum = binNodesNum % threadNum ? binNodesNum / threadNum + 1 : binNodesNum / threadNum;
+    uint32_t blockNum = ceil(binNodesNum / threadNum);
 
     dim3 dimBlock(maxDegree, threadNum); // x per edges, y per nodes
 
     printf("maxDeg: %u \nall nodes in bucket: %u \nthreadDim:(%u, %u) \nblockNum:%u\n", 
         maxDegree, binNodesNum, threadNum, maxDegree, blockNum);
 
-    // printf("debug: \nhashArrayEntriesPerNode: %u \nhashArrayEntriesPerBlock: %u\n", hashArrayEntriesPerNode, hashArrayEntriesPerBlock);
+    // printf("debug: \nhashArrayEntriesPerNode: %u \nhashArrayEntriesPerBlock: %u\n", hashArrayEntriesPerComm, hashArrayEntriesPerBlock);
     printf(">>>> KERNEL RUNNING!\n\n");
 
     reassign_nodes<<<blockNum, dimBlock, SHARED_MEM_SIZE>>> (binNodesNum, binNodes, 
-            V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerNode, m, minGain);
+            V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerComm, m, minGain);
 
     return 21.37;
 }
@@ -315,7 +315,7 @@ float reassign_communities(
     cudaDeviceSynchronize();
 
     zeroAC(ac, V_MAX_IDX);
-    computeAC<<<1, 5>>> (k, ac, comm);
+    computeAC<<<all_nodes_pair.first, all_nodes_pair.second>>> (k, ac, comm);
 
     cudaDeviceSynchronize();
     float mod0 = computeMod(*ei_to_Ci, m, ac, V_MAX_IDX);
@@ -331,7 +331,7 @@ float reassign_communities(
             if (binNodesNum == 0)
                 break;
 
-            uint32_t* binNodes = thrust::raw_pointer_cast(&it0[0]);
+            uint32_t* binNodes = RAW(it0);
 
             printf(">>>BIN RUN: running %u nodes in bin, i (right)=%d\n", binNodesNum, i);
             reassign_communities_bin(binNodes, binNodesNum, V, E, W, k, ac, comm, newComm, maxDegree, m, minGain);

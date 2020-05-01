@@ -22,6 +22,14 @@ static float* W; // weights
 static float* k; // sum of weights per node
 static float m = 0; // total sum of weights
 
+__host__
+void HandleError(cudaError_t error, const char *file, int line) {
+    if (error != cudaSuccess) {
+        printf("%s in %s at line %d\n", cudaGetErrorString(error), file, line);
+        exit( EXIT_FAILURE );
+    }
+}
+
 
 __host__ 
 int parse_args (int argc, char **argv) {

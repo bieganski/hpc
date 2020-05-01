@@ -1,5 +1,4 @@
-#define WARP_SIZE 32
-#define SHARED_MEM_SIZE (48 * 1024)
+#include "utils.h"
 
 
 // __global__

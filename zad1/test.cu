@@ -91,7 +91,7 @@ int main(void)
 
     cudaMemcpyFromSymbol(ptr, CONTRACT_BINS, 4 * 4, 0, cudaMemcpyDeviceToHost);
 
-    cudaDeviceSynchronize();
+    // cudaDeviceSynchronize();
     // HA::init(hashtable, 2 << 5);
 
     printf("LOL: %d\n", ptr[2]);
