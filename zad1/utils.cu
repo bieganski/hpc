@@ -167,11 +167,14 @@ ret_t parse_inut_graph(std::ifstream content) {
         }
 
         tmpG[v1].push_back(v2);
-        tmpG[v2].push_back(v1);
         tmpW[v1].push_back(w);
-        tmpW[v2].push_back(w);
         k[v1] += w;
-        k[v2] += w;
+        
+        if (v1 != v2) {
+            tmpG[v2].push_back(v1);
+            tmpW[v2].push_back(w);
+            k[v2] += w;
+        }
         m += w;
     }
 

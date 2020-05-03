@@ -9,6 +9,7 @@
 #include <sstream>
 #include <vector>
 #include <set>
+#include <float.h>
 
 #include <thrust/device_vector.h>
 #include <thrust/partition.h>
@@ -46,12 +47,12 @@ __device__ uint32_t BINS[] =
     {
         0, // [0,1) is handled separately (lonely nodes; their modularity impact is 0)
         1,
-        5,
-        9,
-        17,
-        33,
-        97, // up to 3 hashed edges per thread in warp
-        385, // up to _ hashed edges per thread in warp, but still in shared memory
+        4,
+        8,
+        16,
+        32,
+        96, // up to 3 hashed edges per thread in warp
+        384, // up to _ hashed edges per thread in warp, but still in shared memory
         UINT32_MAX // hash arrays in global memory
     };
 
@@ -73,7 +74,8 @@ void zeroAC(float* ac, uint32_t V_MAX_IDX) {
  * This kernel function converts multiple nodes,
  * each node got it's own part of shared memory for node-common data, i.a hashArrays.
  */
-__global__ void reassign_nodes(
+__global__ 
+void reassign_nodes(
                         const uint32_t  numNodes,
                         const uint32_t* __restrict__ binNodes,
                         const uint32_t* __restrict__ V,
@@ -93,7 +95,7 @@ __global__ void reassign_nodes(
     assert(next_2_pow(maxDegree) == maxDegree); // maxDegree is power of 2         TODO usunąć przy wiekszych grafach
     
     int i_ptr = threadIdx.y + (blockIdx.y * blockDim.y); // my node pointer
-    int edgeNum = threadIdx.x; // my edge pointer WTF dlaczego nie ma blockidx?
+    int edgeNum = threadIdx.x; // my edge pointer
     int i = binNodes[i_ptr];
 
     printf("XXXXXXXXXXXXXXXX     x + y: %u + %u ||| ||  %d\n", i_ptr, edgeNum, getGlobalIdx());
@@ -142,7 +144,7 @@ __global__ void reassign_nodes(
     // TODO istnieje funkcja ceilf, tylko zwraca floata
 
     uint32_t mask = __ballot_sync(FULL_MASK, edgeNum < maxDegree / 2);
-    assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2));
+    assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2)); // TODO - to się kiedyś wysypie i dobrze, wtedy podmienić mask
 
     if (i_ptr + edgeNum == 0) {
         binprintf(mask);
@@ -151,26 +153,62 @@ __global__ void reassign_nodes(
     }
     
 
-    // sum of weights from node i to Ci\{i}
-    float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
-    for (int offset = maxDegree / 2; offset > 0; offset /= 2)
-        ei_to_Ci = fmaxf(ei_to_Ci, __shfl_down_sync(mask, ei_to_Ci, offset)); // only warp with idx % maxDegree == 0 keeps proper value
+    printf("WAGA: (comm %d, comm %d) = %f\n", comm[i], comm[j], hashWeight[mySlot].value);
 
+    // sum of weights from node i to Ci\{i} from paper doesn't use loop values
+    float loop = i == j ? W[V[i] + edgeNum] : 0;
+    float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+
+    float todo = i == j ? W[V[i] + edgeNum] : 0;
+
+    __syncwarp();
+
+    if (j == 6) {
+        printf("%d: AAA: %f\n", edgeNum, ei_to_Ci);
+    }
+
+    for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
+        ei_to_Ci = fmaxf(ei_to_Ci, __shfl_down_sync(mask, ei_to_Ci, offset)); // only warp with idx % maxDegree == 0 keeps proper value
+        loop = fmaxf(loop, __shfl_down_sync(mask, loop, offset));
+        // if (j == 6) {
+        //     printf("%d: AAAXD: %f\n", edgeNum, ei_to_Ci);
+        // }
+        todo += __shfl_down_sync(mask, todo, offset);
+    }
+   
+
+    // TODO nie usuwaj, wazny assert
     if (edgeNum == 0) {
+        assert(todo == loop);
+        ei_to_Ci -= loop;
         printf("---%d, ei_to_ci: %f\n", i, ei_to_Ci);
     }
 
+    // TODO zrobic dobrze
     // lack of -(e_i -> C_i\{i} / m) addend in that sum, it will be computed later
-    float deltaMod = k[i] * ( ac[i] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+    float deltaMod = comm[j] >= comm[i] ? 
+        -(1 << 5) : 
+        k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+
     uint32_t newCommIdx = comm[j];
+
+    if (i == 6) {
+        printf("e_i_cj: %f, m: %f, k_i: %f, a_c_i_minus_i: %f, a_c_j: %f\n", hashWeight[mySlot].value, m, k[i], ac[i] - k[i], ac[comm[j]]);
+    }
     
-    printf("***%d, deltaMod: %f, a sprawdzam %d\n", i, deltaMod, newCommIdx);
+
+    
+    if (deltaMod > 0)
+        printf("***%d, deltaMod: %f, a sprawdzam %d\n", i, deltaMod, newCommIdx);
 
     
 
     for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
         float deltaModRed = __shfl_down_sync(mask, deltaMod, offset);
         uint32_t newCommIdxRed = __shfl_down_sync(mask, newCommIdx, offset);
+
+        if (newCommIdxRed == 0)
+            continue; // TODO - brzydki hack na undefined behavior
 
         if (deltaModRed > deltaMod) {
             deltaMod = deltaModRed;
@@ -182,11 +220,14 @@ __global__ void reassign_nodes(
 
     if (edgeNum == 0) {
         // this code executes once per vertex
-        float gain = deltaMod + ei_to_Ci / m;
-
+        if (i == 6) {
+            printf("AAABBB: %f\n", ei_to_Ci);
+        }
+        float gain = deltaMod - ei_to_Ci / m;
+        printf(" ~~~~~~~~~~~~~~~~ *MAX_GAIN for %d: %f (to node %d)\n", i, gain, newCommIdx);
         if (gain > 0 && newCommIdx < comm[i]) {
             newComm[i] = newCommIdx;
-            printf("%u: wywalam do communiy %u, bo gain %f\n", i, newCommIdx, gain);
+            printf("~~~~~~~~~~~~~~~~ *%u: wywalam do communiy %u, bo gain %f\n", i, newCommIdx, gain);
         } else {
             newComm[i] = comm[i];
         }
@@ -226,14 +267,19 @@ __host__ float reassign_communities_bin(
     // printf("debug: \nhashArrayEntriesPerNode: %u \nhashArrayEntriesPerBlock: %u\n", hashArrayEntriesPerComm, hashArrayEntriesPerBlock);
     printf(">>>> KERNEL RUNNING!\n\n");
 
-    reassign_nodes<<<blockNum, dimBlock, SHARED_MEM_SIZE>>> (binNodesNum, binNodes, 
+    uint32_t shm = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadNum;
+
+    if (shm > SHARED_MEM_SIZE)
+        assert(false);
+
+    reassign_nodes<<<blockNum, dimBlock, shm>>> (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerComm, m);
 
     return 21.37;
 }
 
 __global__ 
-void computeEiToCi(float*    __restrict__ ei_to_Ci,
+void computeEiToCiSum(float*    __restrict__ ei_to_Ci,
                          const uint32_t* __restrict__ V,
                          const uint32_t* __restrict__ E,
                          const float*    __restrict__ W,
@@ -244,6 +290,11 @@ void computeEiToCi(float*    __restrict__ ei_to_Ci,
 
     for(uint32_t i = 0; i < V[me + 1] - V[me]; i++) {
         uint32_t comj = comm[ E[V[me] + i] ];
+        
+        if (E[V[me] + i] == me) {
+            // loop edge, do nothing
+            continue;
+        }
 
         if (my_com == comj) {
             atomicAdd(ei_to_Ci, W[me + i]);
@@ -262,7 +313,7 @@ float __computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_
 
 
 __host__
-float computeMod(uint32_t V_MAX_IDX,
+float computeModAndAC(uint32_t V_MAX_IDX,
                 const uint32_t* __restrict__ V,
                 const uint32_t* __restrict__ E,
                 const float*    __restrict__ W,
@@ -278,7 +329,7 @@ float computeMod(uint32_t V_MAX_IDX,
     
     auto all_nodes_pair = getBlockThreadSplit(V_MAX_IDX);
 
-    computeEiToCi <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
+    computeEiToCiSum <<<all_nodes_pair.first, all_nodes_pair.second>>> (ei_to_Ci, V, E, W, comm);
     cudaDeviceSynchronize();
 
     zeroAC(ac, V_MAX_IDX);
@@ -302,8 +353,11 @@ float reassign_communities(
                         uint32_t* __restrict__ newComm,
                         const float m,
                         const float minGain) {
-    // TODO more than one bin
-    uint32_t maxDegree = 4;
+
+    // TODO free
+    uint32_t* binsHost = (uint32_t*) malloc(sizeof(BINS));
+    cudaMemcpyFromSymbol(binsHost, BINS, sizeof(BINS), 0, cudaMemcpyDeviceToHost);
+
 
     thrust::device_vector<uint32_t> G(V_MAX_IDX);
     thrust::sequence(G.begin(), G.end(), 1);
@@ -327,21 +381,27 @@ float reassign_communities(
     
 
     float mod0, mod1;    
-    mod0 = computeMod(V_MAX_IDX, V, E, W, k, comm, ac, m);
+    mod0 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
     printf("MOD0 = %f\n", mod0);
+
+    // thrust::copy(ac, (ac + V_MAX_IDX + 1), std::ostream_iterator<float>(std::cout, " "));
 
     while(true) {
 
         // for each bin sequentially computes new communities
         for (int i = 2; ; i++) {
             it = thrust::partition(it0, G.end(), partitionGenerator(i));
-            assert(it == G.end()); // TODO wywalić
+
+            // printf("\nBIN nodes with maxDeg <= %d\n", binsHost[i]);
+            // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
 
             uint32_t binNodesNum = thrust::distance(it0, it);
             if (binNodesNum == 0)
                 break;
 
             uint32_t* binNodes = RAW(it0);
+
+            uint32_t maxDegree = binsHost[i];
 
             printf(">>>BIN RUN: running %u nodes in bin, i (right)=%d\n", binNodesNum, i);
             reassign_communities_bin(binNodes, binNodesNum, V, E, W, k, ac, comm, newComm, maxDegree, m);
@@ -372,9 +432,16 @@ float reassign_communities(
 
         print_comm_assignment(V_MAX_IDX, comm);
 
-        mod1 = computeMod(V_MAX_IDX, V, E, W, k, comm, ac, m);
+        mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
 
         printf("END: mod gain: %f\n", mod1 - mod0);
+
+        printf("------------------AC: \n");
+        // thrust::copy(ac, ac + V_MAX_IDX, std::ostream_iterator<float>(std::cout, " "));
+
+        return mod1;
+
+
 
         if (mod1 - mod0 < 0) {
             assert(false);
@@ -384,7 +451,7 @@ float reassign_communities(
             printf("\n*****************                 CONTRACT                 ****************\n");
             print_comm_assignment(V_MAX_IDX, comm);
             cudaDeviceSynchronize();
-            break;
+            break; // TODO, poprawić contract
         } else {
             printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
             mod0 = mod1;

@@ -215,6 +215,7 @@ void compute_comm_neighbors(
         insertedByMe += __shfl_down_sync(mask, insertedByMe, offset); // only warp with idx == 0 keeps proper value
 
     
+    assert(0 == __ffs(mask) - 1);
     int leader = __ffs(mask) - 1; // = 0 // TODO assumption: zero-idx-thread is alive
 
     uint32_t commNeighborsNum = __shfl_sync(mask, insertedByMe, leader);
@@ -307,7 +308,7 @@ void contract(const uint32_t V_MAX_IDX,
 
     // TODO to też powinno być na zewnątrz
     // TODO free
-    uint32_t* contractBinsHost = (uint32_t*) malloc(sizeof(CONTRACT_BINS) / sizeof(uint32_t));
+    uint32_t* contractBinsHost = (uint32_t*) malloc(sizeof(CONTRACT_BINS));
     cudaMemcpyFromSymbol(contractBinsHost, CONTRACT_BINS, sizeof(CONTRACT_BINS), 0, cudaMemcpyDeviceToHost);
 
     computeWTF(V, compressedComm, WTF);
@@ -426,6 +427,8 @@ int main(int argc, char **argv) {
 
     V_MAX_IDX = std::get<0>(res);
     m = std::get<5>(res);
+
+    printf("loool\n");
 
     HANDLE_ERROR(cudaHostGetDevicePointer(&V, std::get<1>(res), 0));
     HANDLE_ERROR(cudaHostGetDevicePointer(&E, std::get<2>(res), 0));

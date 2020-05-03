@@ -32,6 +32,8 @@ static void HandleError(cudaError_t error, const char *file, int line) {
 //     }
 // };
 
+#include <float.h>
+
 
 __device__ 
 void binprintf(uint32_t v)
@@ -52,14 +54,30 @@ void wtf(uint32_t* ptr) { //KeyValueFloat* hashtable
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
     printf("Tid: %d\n", __laneid());
 
+    if (tid != 0)
+        return;
+    printf("%f\n", -FLT_MAX);
 
-    if (tid  > 15)
+    printf("%f\n", -FLT_MAX + FLT_MAX);
+
+    printf("%f\n", -FLT_MAX + 1000);
+
+    return;
+
+
+    int val = tid;
+    if (tid == 1)
         return;
 
-    int mask = FULL_MASK; // __activemask(); // __ballot_sync(FULL_MASK, 1);
-    int val = 1;
-    for (int offset = 32 / 2; offset > 0; offset /= 2)
-        val += __shfl_down_sync(FULL_MASK, val, offset); // only warp with idx == 0 keeps proper value
+    int mask = 0x00000003; // FULL_MASK; // __activemask(); // __ballot_sync(FULL_MASK, 1);
+    
+    for (int offset = 2; offset > 0; offset /= 2) {
+        val = fminf(val, __shfl_down_sync(mask, val, offset)); // only warp with idx == 0 keeps proper value
+        if (tid == 0) {
+            printf("_%d_\n", val);
+        }
+    }
+        
 
 
     // int leader = __ffs(mask) - 1;
