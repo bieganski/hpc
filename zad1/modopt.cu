@@ -33,10 +33,10 @@
 
 __host__
 void contract(const uint32_t V_MAX_IDX,
-                          const uint32_t* __restrict__ V, 
-                          const uint32_t* __restrict__ E,
-                          const float*    __restrict__ W,
-                          const float*    __restrict__ k,
+                          uint32_t* __restrict__ V, 
+                          uint32_t* __restrict__ E,
+                          float*    __restrict__ W,
+                          float*    __restrict__ k,
                           const uint32_t* __restrict__ comm);
 
 
@@ -70,6 +70,274 @@ void zeroAC(float* ac, uint32_t V_MAX_IDX) {
     std::memset(ac, 0, sizeof(float) * (V_MAX_IDX + 1));
 }
 
+__device__ 
+__forceinline__ 
+unsigned int __lane_id() { 
+    unsigned int laneid; 
+    asm volatile ("mov.u32 %0, %laneid;" : "=r"(laneid)); 
+    return laneid; 
+}
+
+
+
+// https://devblogs.nvidia.com/using-cuda-warp-level-primitives/
+// __device__ 
+// int atomicAggInc(int *ptr) {
+//     int mask = __match_any_sync(__activemask(), (unsigned long long) ptr);
+//     int leader = __ffs(mask) - 1;    // select a leader
+//     int res;
+//     if (__lane_id() == leader)                  // leader does the update
+//         res = atomicAdd(ptr, __popc(mask));
+//     res = __shfl_sync(mask, res, leader);    // get leader’s old value
+//     return res + __popc(mask & ((1 << __lane_id()) - 1)); //compute old value
+// }
+
+// __device__ 
+// __forceinline__ 
+// uint64_t packed_ei_to_ci(uint32_t ei_to_ci, uint32_t ) { 
+//     unsigned int laneid; 
+//     asm volatile ("mov.u32 %0, %laneid;" : "=r"(laneid)); 
+//     return laneid; 
+// }
+
+
+// https://fgiesen.wordpress.com/2013/01/21/order-preserving-bijections/
+__device__
+__forceinline__
+uint32_t int_to_uint(int32_t val) {
+    return val ^ 0x80000000;
+}
+
+__device__
+__forceinline__
+int32_t uint_to_int(uint32_t val) {
+    return val ^ 0x80000000;
+}
+
+__device__
+__forceinline__
+int32_t float_to_int(float f32_val) {
+    int32_t tmp = __float_as_int(f32_val);
+    return tmp ^ ((tmp >> 31) & 0x7fffffff);
+}
+
+__device__
+__forceinline__
+float int_to_float(int32_t i32_val) {
+    int32_t tmp = i32_val ^ ((i32_val >> 31) & 0x7fffffff);
+    return __int_as_float(tmp);
+}
+
+__device__
+__forceinline__
+float uint_to_float(uint32_t ui32_val) {
+    int32_t tmp1 = ui32_val ^ 0x80000000;
+    int32_t tmp2 = tmp1 ^ (tmp1 >> 31);
+    return __uint_as_float(tmp2);
+}
+
+__device__
+__forceinline__
+uint32_t float_to_uint(float f32_val) {
+    uint32_t tmp = __float_as_uint(f32_val);
+    return tmp ^ (((int32_t)tmp >> 31) | 0x80000000);
+}
+
+#define VAR_MEM_PER_VERTEX_BYTES_DEFINE 16
+
+/**
+ * Version of 'reassign_nodes' that handles nodes with degree > 32.
+ * It deduces whether total size of hasharrays fits into shared memory,
+ * if no, then it uses global memory.
+ */
+__global__ 
+void reassign_huge_nodes(
+                        const uint32_t  numNodes,
+                        const uint32_t* __restrict__ binNodes,
+                        const uint32_t* __restrict__ V,
+                        const uint32_t* __restrict__ E,
+                        const float*    __restrict__ W,
+                        const float*    __restrict__ k,
+                        const float*    __restrict__ ac,
+                        const uint32_t* __restrict__ comm,
+                        uint32_t*       __restrict__ newComm,
+                        const uint32_t maxDegree,
+                        const uint32_t nodesPerBlock,
+                        const uint32_t hasharrayEntries,
+                        const float m,
+                        const void*    globalHasharray) {
+
+    extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
+
+    int i_ptr = threadIdx.y + (blockIdx.y * blockDim.y); // my vertex pointer
+    int edge_ptr = threadIdx.x; // my edge pointer
+
+    assert(edge_ptr < maxDegree);
+
+    // before any early return, let's utilize all threads for zeroing memory.
+
+    KeyValueFloat* hashWeight;
+    KeyValueInt*   hashComm;
+
+    // TODO: customize these
+    // ei_to_Ci, loop, deltaModRes
+    uint32_t VAR_MEM_PER_VERTEX_BYTES = sizeof(float) + sizeof(float) + sizeof(uint64_t);
+
+    assert(VAR_MEM_PER_VERTEX_BYTES_DEFINE == VAR_MEM_PER_VERTEX_BYTES);
+
+    uint32_t COMMON_VARS_SIZE_BYTES = VAR_MEM_PER_VERTEX_BYTES * numNodes;
+    // TODO customize this
+    bool shared = COMMON_VARS_SIZE_BYTES + (2 * hasharrayEntries * sizeof(KeyValueInt)) * numNodes <= SHARED_MEM_SIZE; 
+
+    assert(shared);
+
+    // very careful pointer handling here, because of lots of type mismatches and casting
+    if (shared) {
+        uint32_t off = COMMON_VARS_SIZE_BYTES + i_ptr * (2 * hasharrayEntries) * sizeof(KeyValueFloat);
+        hashWeight = (KeyValueFloat*) &shared_mem[off];
+        assert( shared_mem + COMMON_VARS_SIZE_BYTES <= (char*) hashWeight);
+        hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
+        assert(globalHasharray == nullptr);
+    } else {
+        hashWeight = (KeyValueFloat*) globalHasharray + i_ptr * (2 * hasharrayEntries);
+        hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
+    }
+    
+
+    // TODO za dużo roboty
+    for (int i = edge_ptr; i < hasharrayEntries; i += maxDegree) {
+        hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
+        hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
+    }
+
+    if (numNodes -1 < i_ptr) {
+        printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
+        return;
+    }
+    int i = binNodes[i_ptr]; // my vertex
+
+    if (V[i + 1] - V[i] -1 < edge_ptr) {
+        // printf("(i, j_ptr): (%u, %u) jestem niepotrzebny\n", i, edge_ptr);
+        return;
+    }
+    uint32_t j = E[V[i] + edge_ptr]; //my neighbor
+    
+    // printf("XXXXXXXXXXXXXXXX     x + y: %u + %u ||| ||  %d\n", i_ptr, edge_ptr, getGlobalIdx());
+    // printf(">> %d: (%d, %d): ogarniam sąsiada: %u\n", i, i_ptr, edge_ptr, j);
+
+
+    // variables common for each vertex, accumulating ei_to_Ci value 
+    // computed in parallel
+    uint32_t ei_to_ci_off_bytes = i_ptr * VAR_MEM_PER_VERTEX_BYTES;
+    int32_t* glob_ei_to_Ci = (int32_t*) &shared_mem[ei_to_ci_off_bytes];
+    
+    uint32_t loop_off_bytes = ei_to_ci_off_bytes + sizeof(int32_t);
+    assert(ei_to_ci_off_bytes < loop_off_bytes);
+    assert(loop_off_bytes < COMMON_VARS_SIZE_BYTES);
+    int32_t* glob_loop = (int32_t*) &shared_mem[loop_off_bytes];
+
+    // printf("????????????    v: %d    ei_off: %d    loop_off: %d\n", i_ptr, ei_to_ci_off_bytes, loop_off_bytes);
+
+
+    __syncthreads();
+
+    // ok, data initialized, let the run start
+    uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
+    float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + edge_ptr]);
+
+    if (i == 6) {
+        printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + edge_ptr], j, mySlot, comm[j]);
+    }
+
+
+    float loop = i == j ? W[V[i] + edge_ptr] : 0;
+    float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+
+    atomicMax(glob_loop, float_to_int(loop));
+    atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
+
+    __syncthreads();
+
+    if (edge_ptr == 0) {
+        loop = int_to_float(*glob_loop);
+        ei_to_Ci = int_to_float(*glob_ei_to_Ci);
+        printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
+    }
+
+    if (edge_ptr == 0) {
+        ei_to_Ci -= loop;
+    }
+
+    float deltaModRaw = comm[j] >= comm[i] ? 
+        -(1 << 5) : 
+        k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+
+    uint32_t newCommIdx = comm[j];
+
+    if (i == 11) {
+        if (j == 6 || j == 10) {
+            printf("GREP: %d, delta: %f\n", j, deltaModRaw);
+        }
+    }
+
+    if (i == 6) {
+        printf("AAABBB: hashWeight[%d].value: %f\n", mySlot, hashWeight[mySlot].value);
+    }
+    
+    // if (deltaModRaw > 0)
+    //     printf("***%d, deltaMod: %f, a sprawdzam %d\n", i, deltaModRaw, newCommIdx);
+
+    // Now, we must perform reduction on deltaMod values, to find best newCommIdx.
+    // It's kinda hacky, cause in case of obtaining two identical deltaMod values,
+    // we choose community with lower idx. It is accomplished by finding maximal value
+    // of pair (int(deltaMod), -newCommIdx). We implement it using concatenation
+    // of two unsigned values (obtained by order-preserving bijection from floats).
+    uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(float);
+    uint64_t* glob_deltaMod = (uint64_t*) &shared_mem[deltaMod_off_bytes];
+    uint32_t newCommIdxRepr = -1 - newCommIdx; // bits flipped
+
+    assert(-1 - newCommIdxRepr == newCommIdx);
+
+    // LOL
+    // printf("deltaMod: %f, toInt: %d, to uint: %u\n", deltaModRaw, float_to_int(deltaModRaw), int_to_uint(float_to_int(deltaModRaw)));
+    // printf("deltaMod: %f, toInt: %d, to uint: %u, TO RAW::::%f\n", deltaModRaw, float_to_int(deltaModRaw), float_to_uint(deltaModRaw), uint_to_float(float_to_uint(deltaModRaw)));
+    // printf("comm idx repr: %u\n", newCommIdxRepr);
+
+    // LOL
+    // uint64_t deltaMod = (((uint64_t) int_to_uint(float_to_int(deltaModRaw))) << 31) + newCommIdxRepr;
+    uint64_t deltaMod = (((uint64_t) float_to_uint(deltaModRaw)) << 31) | newCommIdxRepr;
+
+    // printf("moj deltamod: %llu oraz test: \n", deltaMod);
+    assert(sizeof(uint64_t) == sizeof(unsigned long long int));
+
+    atomicMax((unsigned long long int*) glob_deltaMod, (unsigned long long int)deltaMod);
+
+    __syncthreads();
+
+    if (edge_ptr == 0) {
+        if (i == 6) {
+            printf("AAABBB: ei - loop: %f, loop: %f\n", ei_to_Ci, loop);
+        }
+        // printf("totalmax: %llu\n", *glob_deltaMod);
+        // float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 32)));
+
+        // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
+        // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
+        float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
+        uint32_t commIdxBest = (uint32_t) -1 - ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
+        printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
+
+        float gain = deltaModBest - ei_to_Ci / m;
+        printf(" ~~~~~~~~~~~~~~~~ *MAX_GAIN for %d: %f (to node %d)\n", i, gain, commIdxBest);
+        if (gain > 0 && commIdxBest < comm[i]) {
+            newComm[i] = commIdxBest;
+            printf("~~~~~~~~~~~~~~~~ *%u: wywalam do communiy %u, bo gain %f\n", i, newCommIdx, gain);
+        } else {
+            newComm[i] = comm[i];
+        }
+    }
+}
+
 /**
  * This kernel function converts multiple nodes,
  * each node got it's own part of shared memory for node-common data, i.a hashArrays.
@@ -92,16 +360,16 @@ void reassign_nodes(
 
     extern __shared__ KeyValueFloat hashtables[];
 
-    assert(next_2_pow(maxDegree) == maxDegree); // maxDegree is power of 2         TODO usunąć przy wiekszych grafach
+    assert(next_2_pow(maxDegree) == maxDegree); // maxDegree is power of 2
     
     int i_ptr = threadIdx.y + (blockIdx.y * blockDim.y); // my node pointer
     int edgeNum = threadIdx.x; // my edge pointer
     int i = binNodes[i_ptr];
 
-    printf("XXXXXXXXXXXXXXXX     x + y: %u + %u ||| ||  %d\n", i_ptr, edgeNum, getGlobalIdx());
+    // printf("XXXXXXXXXXXXXXXX     x + y: %u + %u ||| ||  %d\n", i_ptr, edgeNum, getGlobalIdx());
 
     uint32_t j = E[V[i] + edgeNum];
-    printf(">> %d: (%d, %d): ogarniam sąsiada: %u\n", i, i_ptr, edgeNum, j);
+    // printf(">> %d: (%d, %d): ogarniam sąsiada: %u\n", i, i_ptr, edgeNum, j);
 
 
     if (numNodes -1 < i_ptr) {
@@ -132,16 +400,11 @@ void reassign_nodes(
     uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
     float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + edgeNum]);
 
+    if (i == 6) {
+        printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + edgeNum], j, mySlot, comm[j]);
+    }
+
     __syncwarp();
-
-    // if (edgeNum == 0) {
-    //     printf(">>from node (i=%d,v=%d)\n", i_ptr, i);
-    //     for (int i =0 ; i < hasharrayEntries; i++) {
-    //         printf("%d <<< comm: %d    weight: %f\n", i, hashComm[i].value, hashWeight[i].value);
-    //     }
-    // }
-
-    // TODO istnieje funkcja ceilf, tylko zwraca floata
 
     uint32_t mask = __ballot_sync(FULL_MASK, edgeNum < maxDegree / 2);
     assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2)); // TODO - to się kiedyś wysypie i dobrze, wtedy podmienić mask
@@ -153,7 +416,7 @@ void reassign_nodes(
     }
     
 
-    printf("WAGA: (comm %d, comm %d) = %f\n", comm[i], comm[j], hashWeight[mySlot].value);
+    // printf("WAGA: (comm %d, comm %d) = %f\n", comm[i], comm[j], hashWeight[mySlot].value);
 
     // sum of weights from node i to Ci\{i} from paper doesn't use loop values
     float loop = i == j ? W[V[i] + edgeNum] : 0;
@@ -162,10 +425,6 @@ void reassign_nodes(
     float todo = i == j ? W[V[i] + edgeNum] : 0;
 
     __syncwarp();
-
-    if (j == 6) {
-        printf("%d: AAA: %f\n", edgeNum, ei_to_Ci);
-    }
 
     for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
         ei_to_Ci = fmaxf(ei_to_Ci, __shfl_down_sync(mask, ei_to_Ci, offset)); // only warp with idx % maxDegree == 0 keeps proper value
@@ -193,14 +452,17 @@ void reassign_nodes(
     uint32_t newCommIdx = comm[j];
 
     if (i == 6) {
-        printf("e_i_cj: %f, m: %f, k_i: %f, a_c_i_minus_i: %f, a_c_j: %f\n", hashWeight[mySlot].value, m, k[i], ac[i] - k[i], ac[comm[j]]);
+        printf("AAABBB: hashWeight[%d].value: %f\n", mySlot, hashWeight[mySlot].value);
     }
     
-
-    
     if (deltaMod > 0)
-        printf("***%d, deltaMod: %f, a sprawdzam %d\n", i, deltaMod, newCommIdx);
+        printf("***%d, deltaMod: %f dla %d\n", i, deltaMod, newCommIdx);
 
+    if (i == 11) {
+        if (j == 6 || j == 10) {
+            printf("GREP: %d, delta: %f\n", j, deltaMod);
+        }
+    }
     
 
     for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
@@ -221,7 +483,7 @@ void reassign_nodes(
     if (edgeNum == 0) {
         // this code executes once per vertex
         if (i == 6) {
-            printf("AAABBB: %f\n", ei_to_Ci);
+            printf("AAABBB: ei - loop: %f, loop: %f\n", ei_to_Ci, loop);
         }
         float gain = deltaMod - ei_to_Ci / m;
         printf(" ~~~~~~~~~~~~~~~~ *MAX_GAIN for %d: %f (to node %d)\n", i, gain, newCommIdx);
@@ -234,7 +496,8 @@ void reassign_nodes(
     }
 }
 
-__host__ float reassign_communities_bin(
+__host__ 
+float reassign_communities_bin(
                         const uint32_t* binNodes,
                         const uint32_t binNodesNum,
                         const uint32_t* __restrict__ V, 
@@ -255,6 +518,7 @@ __host__ float reassign_communities_bin(
     uint32_t hashArrayEntriesPerBlock = SHARED_MEM_SIZE / sizeof(KeyValueInt); // should be 6144
 
     // remark, that we need 2 hash arrays per node
+    // TODO to tez jest zle
     uint32_t threadNum = std::min(binNodesNum, hashArrayEntriesPerBlock / (2 * hashArrayEntriesPerComm));
 
     uint32_t blockNum = ceil(binNodesNum / threadNum);
@@ -267,11 +531,16 @@ __host__ float reassign_communities_bin(
     // printf("debug: \nhashArrayEntriesPerNode: %u \nhashArrayEntriesPerBlock: %u\n", hashArrayEntriesPerComm, hashArrayEntriesPerBlock);
     printf(">>>> KERNEL RUNNING!\n\n");
 
-    uint32_t shm = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadNum;
+
+    // TODO to jest źle
+    uint32_t shm = threadNum * VAR_MEM_PER_VERTEX_BYTES_DEFINE + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadNum;
 
     if (shm > SHARED_MEM_SIZE)
         assert(false);
 
+
+    // reassign_huge_nodes<<<blockNum, dimBlock, shm>>> (binNodesNum, binNodes, 
+    //         V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerComm, m, nullptr);
     reassign_nodes<<<blockNum, dimBlock, shm>>> (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadNum, hashArrayEntriesPerComm, m);
 
@@ -290,14 +559,9 @@ void computeEiToCiSum(float*    __restrict__ ei_to_Ci,
 
     for(uint32_t i = 0; i < V[me + 1] - V[me]; i++) {
         uint32_t comj = comm[ E[V[me] + i] ];
-        
-        if (E[V[me] + i] == me) {
-            // loop edge, do nothing
-            continue;
-        }
 
         if (my_com == comj) {
-            atomicAdd(ei_to_Ci, W[me + i]);
+            atomicAdd(ei_to_Ci, W[V[me] + i]);
         }
     }
 }
@@ -306,9 +570,10 @@ __host__
 float __computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_IDX) {
     auto tmp = thrust::device_vector<float>(V_MAX_IDX + 1);
     thrust::transform(ac, ac + V_MAX_IDX + 1, tmp.begin(), thrust::square<float>());
-    float sum = thrust::reduce(tmp.begin(), tmp.end(), (int) 0, thrust::plus<float>());
+    float sum = thrust::reduce(tmp.begin(), tmp.end(), (float) 0, thrust::plus<float>());
+    printf("sum: %f\n", sum);
 
-    return ei_to_Ci_sum / m - ( sum / (4 * m * m));
+    return ei_to_Ci_sum / (2 * m) - ( sum / (4 * m * m));
 }
 
 
@@ -344,10 +609,10 @@ float computeModAndAC(uint32_t V_MAX_IDX,
 __host__ 
 float reassign_communities(
                         const uint32_t V_MAX_IDX,
-                        const uint32_t* __restrict__ V, 
-                        const uint32_t* __restrict__ E,
-                        const float*    __restrict__ W,
-                        const float*    __restrict__ k,
+                        uint32_t* __restrict__ V, 
+                        uint32_t* __restrict__ E,
+                        float*    __restrict__ W,
+                        float*    __restrict__ k,
                         float*    __restrict__ ac,
                         uint32_t* __restrict__ comm,
                         uint32_t* __restrict__ newComm,
@@ -369,8 +634,8 @@ float reassign_communities(
     };
 
     // [0,1) is handled separately (lonely nodes; their modularity impact is 0)
-    auto it0 = thrust::partition(G.begin(), G.end(), partitionGenerator(1));
-    auto it = it0;
+    auto _it0 = thrust::partition(G.begin(), G.end(), partitionGenerator(1));
+    auto it = _it0, it0 = _it0;
 
     if (thrust::distance(G.begin(), it0) != 0) {
         // TODO - wywalić to
@@ -387,6 +652,8 @@ float reassign_communities(
     // thrust::copy(ac, (ac + V_MAX_IDX + 1), std::ostream_iterator<float>(std::cout, " "));
 
     while(true) {
+
+        it0 = _it0;
 
         // for each bin sequentially computes new communities
         for (int i = 2; ; i++) {
@@ -423,6 +690,7 @@ float reassign_communities(
             cudaDeviceSynchronize();
 
             it0 = it;
+
         }
 
         // OK, we computed new communities for all bins, let's check whether
@@ -434,24 +702,35 @@ float reassign_communities(
 
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
 
-        printf("END: mod gain: %f\n", mod1 - mod0);
-
-        printf("------------------AC: \n");
-        // thrust::copy(ac, ac + V_MAX_IDX, std::ostream_iterator<float>(std::cout, " "));
+        printf("MOD1 %f\n", mod1);
 
         return mod1;
 
-
-
         if (mod1 - mod0 < 0) {
+            printf("MOD DEBUG: %f\n", mod1 - mod0);
+            // exit(1);
             assert(false);
-        } else if (mod1 - mod0 < minGain) {
-
+        } else if (mod1 == mod0) {
+            return mod1; // TODO
+        }
+        else if (mod1 - mod0 < minGain) {
             contract(V_MAX_IDX, V, E, W, k, comm);
             printf("\n*****************                 CONTRACT                 ****************\n");
             print_comm_assignment(V_MAX_IDX, comm);
             cudaDeviceSynchronize();
-            break; // TODO, poprawić contract
+            mod0 = mod1;
+
+            printf("COMMS END: \n");
+            for(int i = 1; i <= V_MAX_IDX; i++) {
+                printf("%d ", comm[i]);
+            }
+            printf("\n");
+
+            float mod_debug = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
+
+            printf("MOD CONTRCT: %f\n", mod_debug);
+            return mod1; // TODO debug  remove, up to first constract
+            // break; // TODO, poprawić contract
         } else {
             printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
             mod0 = mod1;

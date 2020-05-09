@@ -253,11 +253,11 @@ void updateSpecific(uint32_t* indices, uint32_t indicesNum, uint32_t* from, uint
  * use several blocks. 
  */
 __host__ std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads) {
-    if (threads < 1 << 16) {
+    if (threads < (1 << 16)) {
         return std::make_pair(1, (uint16_t) threads);
     }
-    assert(threads < 1 << 26); // max blockIdx.x * threadIdx.x
-    return std::make_pair((uint16_t) (threads / 1 << 16) + 1, (uint16_t) 1 << 16);
+    assert(threads < (1 << 26)); // max blockIdx.x * threadIdx.x
+    return std::make_pair((uint16_t)  ceil( (float) threads / (float) (1 << 16)), (uint16_t) (1 << 16));
 }
 
 __host__

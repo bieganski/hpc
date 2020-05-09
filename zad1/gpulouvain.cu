@@ -42,6 +42,24 @@ uint32_t V_MAX_IDX;
 
 
 
+__host__
+void debug_print(const uint32_t V_MAX_IDX,
+                          const uint32_t* __restrict__ V,
+                          const uint32_t* __restrict__ E) {        
+    printf("\n");                   
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        int num = V[i + 1] - V[i];
+        if (!num)
+            continue;
+        printf("|%d| > ", i);
+        for (int j = 0; j < num; j++) {
+            printf("%d, ", E[V[i] + j]);
+        }
+        printf("\n");
+    }
+    printf("\n");
+}
+
 __global__
 void compute_size_degree(const uint32_t V_MAX_IDX,
                           const uint32_t* __restrict__ V,
@@ -149,11 +167,7 @@ void compute_comm_neighbors(
 
     for (int i = myEdgePtr; i < hasharrayEntries; i += WARP_SIZE) {
         hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
-        // hashWeight[i].key = hashArrayNull;
-        // hashWeight[i].value = (float) 0;
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
-        // hashComm[i].key = hashArrayNull;
-        // hashComm[i].value = hashArrayNull;
     }
 
     __syncwarp();
@@ -179,7 +193,7 @@ void compute_comm_neighbors(
                 start = i; // for next iteration
                 edgeIdx = myEdgePtr - (WTF[i] - offset);
                 myEdge = E[V[myNode] + edgeIdx];
-                printf("%d: dla myPtrEdge: %d znalazlem edge %d (edgeIdx = %d)\n", myNode, myEdgePtr, myEdge, edgeIdx);
+                // printf("%d: dla myPtrEdge: %d znalazlem edge %d (edgeIdx = %d)\n", myNode, myEdgePtr, myEdge, edgeIdx);
                 break;
             } else if (i == lastNodePtrExcl - 1) {
                 // they don't need me :(
@@ -192,11 +206,11 @@ void compute_comm_neighbors(
             break;
 
         // I know who am I, now add my neighbor to sum of weights
-        printf( "%d->%d: dodaje do haszarray wage %f, entries: %d\n", myNode, myEdge, W[V[myNode] + edgeIdx], hasharrayEntries);
+        // printf( "%d->%d: dodaje do haszarray wage %f, entries: %d\n", myNode, myEdge, W[V[myNode] + edgeIdx], hasharrayEntries);
         if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdge], comm[myEdge], W[V[myNode] + edgeIdx], hasharrayEntries) ) {
             insertedByMe++;
         } else {
-            printf("ooops! mamy konflikt!\n");
+            ;
         }
 
         myEdgePtr += WARP_SIZE;
@@ -235,20 +249,44 @@ void compute_comm_neighbors(
         if (hashComm[i].key != hashArrayNull) {
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             newE[idx0 + myIdx] = hashComm[i].value;
-            newW[idx0 + myIdx] = hashWeight[i].value;
+            if (myComm == hashComm[i].value) {
+                // self-loop, weight must be halved
+                newW[idx0 + myIdx] = hashWeight[i].value / 2.0;
+            } else {
+                newW[idx0 + myIdx] = hashWeight[i].value;
+            }
+            
             // printf("%d: dodaje sasiada %d pod idx %d\n", myComm, hashComm[i].value, idx0 + myIdx); 
         }
     }
 }
 
 
+__global__
+void compute_k(const uint32_t V_MAX_IDX,
+                          const uint32_t* __restrict__ V,
+                          const float*    __restrict__ W,
+                          float*          __restrict__ k) {
+    
+    int tid = 1 + getGlobalIdx();
+    if (tid > V_MAX_IDX)
+        return;
+    int idx0 = V[tid];
+    int num = V[tid + 1] - idx0;
+    k[tid] = 0;
+    for (int i = 0; i < num; i++) {
+        k[tid] += W[idx0 + i];
+    }
+}
+
+
 __host__
 void contract(const uint32_t V_MAX_IDX,
-                          const uint32_t* __restrict__ V, 
-                          const uint32_t* __restrict__ E,
-                          const float*    __restrict__ W,
-                          const float*    __restrict__ k,
-                          const uint32_t* __restrict__ comm) {
+                          uint32_t* __restrict__ V, 
+                          uint32_t* __restrict__ E,
+                          float*    __restrict__ W,
+                          float*    __restrict__ k,
+                          const uint32_t* __restrict__ comm) { // TODO tu jestem, zrobić update communities
 
     // TODO przenieśc je wyżej, żeby alokować tylko raz
     thrust::device_vector<uint32_t> commSize(V_MAX_IDX + 1, 0);
@@ -382,6 +420,8 @@ void contract(const uint32_t V_MAX_IDX,
         thrust::copy(newID.begin(), newID.end(), 
             std::ostream_iterator<uint32_t>(std::cout, " "));
         printf("\nnowe V:");
+        // TODO wczsniej dac
+        thrust::exclusive_scan(newV.begin(), newV.end(), newV.begin());
         thrust::copy(newV.begin(), newV.end(), 
             std::ostream_iterator<uint32_t>(std::cout, " "));
         printf("\nnowe E:");
@@ -391,24 +431,62 @@ void contract(const uint32_t V_MAX_IDX,
         thrust::copy(newW.begin(), newW.end(), 
             std::ostream_iterator<float>(std::cout, " "));
 
-        thrust::device_vector<uint32_t> realNewE(vertexStart.size() - 1);
-        thrust::device_vector<uint32_t> realNewW(newW.size());
+        thrust::device_vector<uint32_t> realNewE(newE.size(), 0);
+        thrust::device_vector<float> realNewW(newW.size(), 0); // TODO wyzerować
 
         thrust::copy_if(newE.begin(), newE.end(), realNewE.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
-        thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
+        thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const float& x) {return x != 0;});
 
 
-        printf("\n prawdziwe E:");
-        thrust::copy(realNewE.begin(), realNewE.end(), 
-            std::ostream_iterator<float>(std::cout, " "));
-        printf("\n prawdziwe W:");
-        thrust::copy(realNewW.begin(), realNewW.end(), 
-            std::ostream_iterator<float>(std::cout, " "));
+        // printf("\nprawdziwe E:");
+        // thrust::copy(realNewE.begin(), realNewE.end(), 
+        //     std::ostream_iterator<uint32_t>(std::cout, " "));
+        // printf("\nprawdziwe W:");
+        // thrust::copy(realNewW.begin(), realNewW.end(), 
+        //     std::ostream_iterator<float>(std::cout, " "));
+
+        // thrust::copy(newV.begin(), newV.end(), &V[0]);
+        // thrust::copy(realNewE.begin(), realNewE.end(), &E[0]);
+
+        HANDLE_ERROR(cudaMemcpy((void*)V, (void*)RAW(newV), newV.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy((void*)E, (void*)RAW(realNewE), realNewE.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+        HANDLE_ERROR(cudaMemcpy((void*)W, (void*)RAW(realNewW), realNewW.size() * sizeof(float), cudaMemcpyDeviceToHost));
+        
+        // TODO check this
+        thrust::host_vector<uint32_t> seq(V_MAX_IDX + 1);
+        thrust::sequence(seq.begin(), seq.end());
+        HANDLE_ERROR(cudaMemcpy((void*)comm, (void*)RAW(seq), (V_MAX_IDX + 1) * sizeof(uint32_t), cudaMemcpyHostToHost));
+        
+        cudaDeviceSynchronize();
+        auto pair = getBlockThreadSplit(V_MAX_IDX);
+        compute_k<<<pair.first, pair.second>>> (V_MAX_IDX, V, W, k);
+
+        cudaDeviceSynchronize();
+
+        printf("KKKKKKK : \n");
+        for (int i = 1; i <= V_MAX_IDX; i++) {
+            printf("%f ", k[i]);
+        }
+        printf("\n");
+        printf("VVVV : \n");
+        for (int i = 1; i <= V_MAX_IDX; i++) {
+            printf("%d ", V[i]);
+        }
+        printf("\n");
+        printf("WWW : \n");
+        for (int i = 1; i <= 2 * V_MAX_IDX; i++) {
+            printf("%f ", W[i]);
+        }
+        // cudaMemcpy(W, RAW(realNewW), realNewW.size() * sizeof(float), cudaMemcpyDeviceToHost);
+
+        // debug_print(V_MAX_IDX, RAW(newV), RAW(realNewE));
+        debug_print(V_MAX_IDX, V, E);
 
         it0 = it; // it0 points to first node that wasn't processed yet
     }
     return;
 }
+
 
 
 /**
@@ -460,8 +538,12 @@ int main(int argc, char **argv) {
 
     float mod = reassign_communities(V_MAX_IDX, V, E, W, k, ac, comm, newComm, m, MIN_GAIN);
 
-    printf("end modularity: %f\n", mod);
+    printf("TOTAL END modularity: %f\n", mod);
 
+    if (VERBOSE) {
+        print_comm_assignment(V_MAX_IDX, comm);
+    }
+    // TODO cleanup
     // cudaFree(V);
     return 0;
 }
