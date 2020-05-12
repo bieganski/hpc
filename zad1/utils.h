@@ -44,7 +44,11 @@ __device__
 int getGlobalIdx();
 
 __global__ 
-void updateSpecific(uint32_t* indices, uint32_t indicesNum, uint32_t* from, uint32_t* to);
+void updateSpecific(
+    uint32_t* indices, uint32_t indicesNum, 
+    const uint32_t* __restrict__  from, 
+    uint32_t* __restrict__  to, 
+    uint32_t* __restrict__ V);
 
 __host__ 
 std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads);

@@ -169,15 +169,16 @@ ret_t parse_inut_graph(std::ifstream content) {
         tmpG[v1].push_back(v2);
         tmpW[v1].push_back(w);
         k[v1] += w;
-        
+        m += w / 2.0;
+
         if (v1 != v2) {
             tmpG[v2].push_back(v1);
             tmpW[v2].push_back(w);
             k[v2] += w;
+            m += w / 2.0; // only loops are halved in m's perspective
         }
-        m += w;
     }
-
+    
     uint32_t act = 0;
     for (uint32_t i = 1; i < N; i++) {
         V[i] = act;
@@ -187,14 +188,27 @@ ret_t parse_inut_graph(std::ifstream content) {
         V[i + 1] = act;
     }
 
+    // printf("V:\n");
+    // for (uint32_t i = 1; i < N; i++) {
+    //     printf("%d ", V[i]);
+    // }
+    // printf("E:\n");
+    // for (uint32_t i = 1; i < V[N]; i++) {
+    //     printf("%d ", E[i]);
+    // }
+    // exit(1);
+
     return std::make_tuple(N - 1, V, E, W, k, m);
 }
 
 
 // https://www.geeksforgeeks.org/smallest-power-of-2-greater-than-or-equal-to-n/
 __host__ __device__ 
-uint32_t next_2_pow(uint32_t n) { 
+uint32_t next_2_pow(uint32_t n) {
     assert(n > 1);
+    assert(n != UINT32_MAX);
+
+    // uint32_t n0 = n;
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -203,11 +217,13 @@ uint32_t next_2_pow(uint32_t n) {
     n |= n >> 16;
     n++;
 
+    uint32_t tmp;
     for (uint32_t i = 0; i <= 31; i++) {
-        uint32_t tmp = 1 << i;
+        tmp = 1 << i;
         if (n == tmp)
             return n;
     }
+    // printf("AAAAAAAAAAAAA: n0: %d, N: %d, tmp: %d\n", n0, n, tmp);
     assert(false);
     return 0xFFFFFFFF; // for compiler to be happy about returning anything
 
@@ -238,13 +254,19 @@ int getGlobalIdx(){
 }
 
 __global__ 
-void updateSpecific(uint32_t* indices, uint32_t indicesNum, uint32_t* from, uint32_t* to) {
+void updateSpecific(
+        uint32_t* indices, uint32_t indicesNum, 
+        const uint32_t* __restrict__  from, 
+        uint32_t* __restrict__  to, 
+        uint32_t* __restrict__ V) {
     int tid = threadIdx.x + (blockIdx.x * blockDim.x);
     if (tid + 1 > indicesNum) {
         return;
     }
-    printf("%d: updatuję %d\n", tid, indices[tid]);
-    to[indices[tid]] = from[indices[tid]];
+    assert(from[indices[tid]] != 0);
+    uint32_t i = indices[tid];
+    // printf("updateSpecific idx=%d, newComm[idx]=%d, it's deg: %d\n", i, from[i], V[i+1] - V[i]);
+    to[i] = from[i];
 }
 
 /**
@@ -253,11 +275,11 @@ void updateSpecific(uint32_t* indices, uint32_t indicesNum, uint32_t* from, uint
  * use several blocks. 
  */
 __host__ std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads) {
-    if (threads < (1 << 16)) {
+    if (threads < 1024) {
         return std::make_pair(1, (uint16_t) threads);
     }
-    assert(threads < (1 << 26)); // max blockIdx.x * threadIdx.x
-    return std::make_pair((uint16_t)  ceil( (float) threads / (float) (1 << 16)), (uint16_t) (1 << 16));
+    // assert(threads < (1 << 26)); // max blockIdx.x * threadIdx.x
+    return std::make_pair((uint16_t)  ceil( (float) threads / 1024.0), 1024.0);
 }
 
 __host__

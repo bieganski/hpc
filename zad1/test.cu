@@ -8,6 +8,7 @@
 #include <iostream>
 
 #include "hasharray.h"
+#include <thrust/generate.h>
 
 // using namespace std;
 
@@ -93,10 +94,16 @@ void wtf(uint32_t* ptr) { //KeyValueFloat* hashtable
 
     extern __shared__ float arr[];
     int tid = threadIdx.x + blockIdx.x * blockDim.x;
-    printf("Tid: %d\n", __laneid());
+    // printf("Tid: %d\n", __laneid());
 
-    if (tid != 0)
-        return;
+    printf("lol\n");
+
+    // for (int i = 0 ; i < 1000; i++) {
+    //     atomicAdd(ptr, 1);
+    // }
+    return;
+    // if (tid != 0)
+    //     return;
     // printf("%f\n", -FLT_MAX);
 
     // printf("%f\n", -FLT_MAX + FLT_MAX);
@@ -108,13 +115,13 @@ void wtf(uint32_t* ptr) { //KeyValueFloat* hashtable
 
     // printf("%d\n",__float_as_uint( -3.14 ));
 
-    printf("F2I: %d\n", float_to_uint(-1000000.0));
-    printf("F2I: %d\n", float_to_uint(-3.14));
-    printf("F2I: %d\n", float_to_uint(-2.0));
-    printf("F2I: %d\n", float_to_uint(0.0));
-    printf("F2I: %d\n", float_to_uint(2.0));
-    printf("F2I: %d\n", float_to_uint(3.14));
-    printf("F2I: %d\n", float_to_uint(1000000.0));
+    // printf("F2I: %d\n", float_to_uint(-1000000.0));
+    // printf("F2I: %d\n", float_to_uint(-3.14));
+    // printf("F2I: %d\n", float_to_uint(-2.0));
+    // printf("F2I: %d\n", float_to_uint(0.0));
+    // printf("F2I: %d\n", float_to_uint(2.0));
+    // printf("F2I: %d\n", float_to_uint(3.14));
+    // printf("F2I: %d\n", float_to_uint(1000000.0));
 
 
     // printf("SIG: %d\n", unsigned_to_signed(125));
@@ -189,12 +196,44 @@ __device__ uint32_t CONTRACT_BINS[] = {
     UINT32_MAX
 };
 
-int main(void)
-{
-    KeyValueFloat* hashtable;
+__global__ 
+void test(uint32_t* ptr) { //KeyValueFloat* hashtable
 
-    HANDLE_ERROR(cudaHostAlloc((void**)&hashtable, sizeof(KeyValueFloat) * (2 << 5), cudaHostAllocDefault));
-    cudaDeviceSynchronize();
+    extern __shared__ float arr[];
+
+    int tid = threadIdx.x + blockIdx.x * blockDim.x;
+
+    char* lol = (char*) &ptr[0];
+    if (tid != 0) 
+        return;
+
+    // if (ptr == nullptr) {
+    //     printf("jest null\n");
+    // }
+
+
+    printf("%p\n", lol);
+
+}
+
+__host__ static __inline__ float rand_01()
+{
+    return ((float)rand()/RAND_MAX);
+}
+
+int main(){
+    
+  thrust::device_vector<float> h_1(1000000);
+
+  thrust::generate(h_1.begin(), h_1.end(), rand_01);
+
+    thrust::partition((h_1.begin(), h_1.end(), [] __device__ (const float& x) {return x > 0.5;});
+
+  
+    // KeyValueFloat* hashtable;
+
+    // HANDLE_ERROR(cudaHostAlloc((void**)&hashtable, sizeof(KeyValueFloat) * (2 << 5), cudaHostAllocDefault));
+    // cudaDeviceSynchronize();
 
     // uint32_t* ptr = (uint32_t*) malloc(4 * 6);
 
@@ -206,10 +245,11 @@ int main(void)
     // printf("LOL: %d\n", ptr[2]);
     // printf("LOLSIZE: %d\n", sizeof(CONTRACT_BINS));
 
-    wtf<<<1, 32, 48 * 1024>>>((uint32_t*) hashtable);
+
+    // test<<<1, 1, 1024>>>((uint32_t*) hashtable);
 
     cudaDeviceSynchronize();
 
-    printf("WYNIK: %d", * ((int*) hashtable));
+    // printf("WYNIK: %d", * ((int*) hashtable));
     return 0;
 }

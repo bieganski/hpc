@@ -264,7 +264,7 @@ gpulouvain: gpulouvain.o hasharray.o utils.o modopt.o
 	$(EXEC) cp $@ ../../bin/$(TARGET_ARCH)/$(TARGET_OS)/$(BUILD_TYPE)
 
 test.o: test.cu
-	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) -dc -O2 -o $@ -c $<
+	$(EXEC) $(NVCC) $(INCLUDES) $(ALL_CCFLAGS) $(GENCODE_FLAGS) --expt-extended-lambda -dc -O2 -o $@ -c $<
 
 test: test.o hasharray.o
 	$(EXEC) $(NVCC) $(ALL_LDFLAGS) $(GENCODE_FLAGS) -rdc=true -o $@ $+ $(LIBRARIES)

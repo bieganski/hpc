@@ -1,0 +1,140 @@
+\documentclass[12pt]{article}
+% We can write notes using the percent symbol!
+% The first line above is to announce we are beginning a document, an article in this case, and we want the default font size to be 12pt
+\usepackage[utf8]{inputenc}
+% This is a package to accept utf8 input.  I normally do not use it in my documents, but it was here by default in Overleaf.
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+% These three packages are from the American Mathematical Society and includes all of the important symbols and operations 
+\usepackage{fullpage}
+% By default, an article has some vary large margins to fit the smaller page format.  This allows us to use more standard margins.
+
+\usepackage{listings}
+\usepackage{xcolor}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.96}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% \setlength{\parskip}{0em}
+
+% \setlength{\parindent}{10pt}
+
+
+\begin{document}
+% Once we have all of our packages and setting announced, we need to begin our document.  You will notice that at the end of the writing there is an end document statements.  Many options use this begin and end syntax.
+
+\author{Mateusz Biegański}
+\title{Louvain community detection - report}
+\maketitle
+
+\begin{center}
+    \Large Louvain community detection - report \normalsize
+\end{center}
+
+\begin{abstract}
+    \par I present my implementation of highly concurrent version of Louvain community detection alghoritm, according to Md. Naim, Fredrik Manne \emph{et al} paper \textbf{Community Detection on the GPU}. It is superior to another, earlier implementations, because of highly intensive usage of fast shared memory. My implementation is based on CUDA 10.2, and experiments were performed on TITAN V GPU.
+\end{abstract}
+
+
+\section*{\fontsize{18}{18}\selectfont Implementation}
+
+My implementation is mostly consistent with one presented in title paper. Both modularity optimization and graph merging are highly parallel. In modularity optimization I have extended version from paper, by implementing additional kernel, for handling vertices with degree at most 32, which is equal to size of single warp. I have used much warp-level primitives to make it efficient, they are described broader in Optimizations section.
+The most crucial thing is, that vertex's neighborhood is computed using block-common, shared memory. I take advantage of it during modularity optimization ( computing total weights to neighboring communities) and during graph merging, computing same values, but for whole communities (sets of vertices).
+
+\section*{\fontsize{18}{18}\selectfont Quality tests}
+TODO
+
+\section*{\fontsize{18}{18}\selectfont Optimizations}
+
+\subsubsection*{Hashtables data locality}
+    
+     As a method of implementing my hasharrays I have chosen Linear probing, which takes advantage of memory locality, both during inserting and lookup, thus results in few uncached memory accesses. 
+    
+\subsubsection*{Lack of modulo operator}
+    
+    Providing size of hash tables is power of 2, I can replace usages of modulo operator (\%) during inserting or lookup, for the sake of logical AND operator, which is significantly faster.
+    
+    Both lack of modulo and data locality can be seen in following code fragment (\emph{hasharray.cu}):
+    \begin{lstlisting}[language=C]
+    while (true) {
+        if (hashtable[slot].key == key) {
+            return hashtable[slot].value;
+        }
+        if (hashtable[slot].key == hashArrayNull) {
+            return hashArrayNull;
+        }
+        slot = (slot + 1) & (table_size - 1);
+    }
+    \end{lstlisting}
+    
+\subsubsection*{Warp-level primitives}
+    Both in modularity optimization and in graph merging phases I use CUDA warp-level primitives. They are extremely fast, because they operate on common on-chip memory (L1) and are a great way to implement warp reductions or variable broadcasting.
+    Following code performs warp reduction, computing maximum value of variable \emph{var}:
+    
+    \begin{lstlisting}[language=C]
+    float var = tid;
+    for (int offset = 16; offset > 0; offset /= 2) {
+        var = fmaxf(var, __shfl_down_sync(mask, var, offset))
+    // here thread with tid = 0 keeps value 31
+    \end{lstlisting}
+    I also used another primitives, i.a:
+    
+    \begin{lstlisting}[language=C]
+    uint32_t mask = __ballot_sync(0xFFFFFFFF, edgeNum < maxDegree / 2);
+    // each thread in warp get bit mask with 1 on position k if and only if thread k holds edgeNum < maxDegree / 2 predicate
+    \end{lstlisting}
+    
+        
+
+\subsubsection*{Bijective float-int representations}
+    During modularity optimization, each thread computes it's modularity gain for it's associated community. These values are then reduced, and there is one community chosen, with best modularity increase, and, which is important, with lowest index, if multiple with same gain. Avoiding memory races leads to performance bottleneck, thus I take advantage of 64 bits atomicMax, encoding pair (gain, -community), both values in 32 bits, into single 64 bit integer and simply find it's maximum and then decoding. It's not obvious, because I had to find two-sided, order-preserving bijection, mapping float and int. Technically it was bit harder, because I needed unsigned int (U2 representation and it's leading minus bit is not conductive to computing maximum), but draft can be described by following functions: 
+    \begin{lstlisting}[language=C]
+__device__
+__forceinline__
+int32_t float_to_int(float f32_val) {
+    int32_t tmp = __float_as_int(f32_val);
+    return tmp ^ ((tmp >> 31) & 0x7fffffff);
+}
+
+__device__
+__forceinline__
+float int_to_float(int32_t i32_val) {
+    int32_t tmp = i32_val ^ ((i32_val >> 31) & 0x7fffffff);
+    return __int_as_float(tmp);
+}
+    \end{lstlisting}
+
+    
+\subsubsection*{Usage of page-locked host memory}
+    I used not only device-allocated memory, but also allocated in host RAM, which page-locked (for not to be swapped to disk).
+
+\subsubsection*{NVIDIA Thrust routines}
+    In some part of my implementations (especially graph merging) I have taken advantage of thrust::device\_vector and associated routines, like reductions or transformations. It is convenient, because it is in accordance with modern C++ features like lambdas, being highly optimized at the same time.
+    
+    
+
+\end{document}
+
