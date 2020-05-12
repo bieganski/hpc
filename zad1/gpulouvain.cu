@@ -208,8 +208,6 @@ void compute_comm_neighbors(
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
 
-    __syncwarp();
-
     uint32_t insertedByMe = 0;
     uint32_t start = firstNodePtrIncl;
     uint32_t offset = WTF[firstNodePtrIncl]; // TODO benchmark bez tego
@@ -256,10 +254,14 @@ void compute_comm_neighbors(
     } // while(true)
 
     // now, compute number of totally inserted in this warp's community
+    
+    int mask = __ballot_sync(0xFFFFFFFF, 1);
 
-    int mask = __activemask();
-
-    // binprintf(mask);
+    if (myEdgePtr == 0) {
+        printf("MASK: ");
+        binprintf(mask);
+        printf("\n");
+    }
 
     assert(mask == FULL_MASK);
 
@@ -267,10 +269,12 @@ void compute_comm_neighbors(
         insertedByMe += __shfl_down_sync(mask, insertedByMe, offset); // only warp with idx == 0 keeps proper value
 
     
-    assert(0 == __ffs(mask) - 1);
-    int leader = __ffs(mask) - 1; // = 0 // TODO assumption: zero-idx-thread is alive
+    // assert(0 == __ffs(mask) - 1);
 
-    uint32_t commNeighborsNum = __shfl_sync(mask, insertedByMe, leader);
+    assert(__ffs(mask) & 1);
+    int leader = 0; // __ffs(mask) - 1; // = 0 // TODO assumption: zero-idx-thread is alive
+
+    uint32_t commNeighborsNum = __shfl_sync(mask, insertedByMe, 0);
 
     int myEdgePtr0 = threadIdx.x;
     if (myEdgePtr0 == 0) {
@@ -278,12 +282,16 @@ void compute_comm_neighbors(
         newV[myComm] = commNeighborsNum; // will be computed prefix sum on it later
     }
 
-    assert(mask == FULL_MASK); // !!!!!
+    // assert(mask == FULL_MASK); // !!!!!
     uint32_t idx0 = edgePos[myComm];
     // if (myEdgePtr0 == 0) {
     //     printf("%d: our idx0: %d\n", myComm, idx0);
     // }
-    for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
+    if (threadIdx.x != 0)
+        return;
+    printf("LOL: (%d) -> %d, uniq edgePtr0: %d\n", myCommPtr, myComm, myEdgePtr0);
+    // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
+    for (int i = 0; i < hasharrayEntries; i++) {
         if (hashComm[i].key != hashArrayNull) {
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             newE[idx0 + myIdx] = hashComm[i].value;
@@ -297,6 +305,7 @@ void compute_comm_neighbors(
             // printf("%d: dodaje sasiada %d pod idx %d\n", myComm, hashComm[i].value, idx0 + myIdx); 
         }
     }
+    printf("LOL2:(%d) ->  %d vs %d\n", myCommPtr, freeIndices[myComm] ,newV[myComm]);
     assert(freeIndices[myComm] == newV[myComm]);
 }
 
@@ -328,7 +337,7 @@ void recompute_globalCommAssignment(
         const uint32_t* __restrict__ comm,
         uint32_t* __restrict__ globalCommAssignment) {
 
-    assert(blockIdx.x * blockIdx. y * blockIdx.z == 0); // only one block supported, because of __syncthreads() call
+    // assert(blockIdx.x * blockIdx. y * blockIdx.z == 0); // only one block supported, because of __syncthreads() call
     // assert(newID[0] == 0); // TODO comment out
 
     int tid = 1 + getGlobalIdx();
@@ -339,7 +348,7 @@ void recompute_globalCommAssignment(
         // I was moved to another community
         globalCommAssignment[tid] = comm[tid];
     }
-    __syncthreads();
+    cudaDeviceSynchronize();
 
     if (globalCommAssignment[globalCommAssignment[tid]] != 0) {
         globalCommAssignment[tid] = globalCommAssignment[globalCommAssignment[tid]];
@@ -534,10 +543,13 @@ void contract(const uint32_t V_MAX_IDX,
     thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const float& x) {return x != 0;});
 
 
-        // TODO if --verbose
-        // TODO TODO TODO TODO TODO TODO TODO TODO     VERBOSE
-    // dim3 __dim((uint) ceil((float)V_MAX_IDX / 1024.0) , min(V_MAX_IDX, 1024));
-    // recompute_globalCommAssignment<<<1, __dim>>>(V_MAX_IDX, RAW(newID), comm, RAW(globalCommAssignment));
+    if (VERBOSE) {
+        // dim3 __dim((uint) ceil((float)V_MAX_IDX / 1024.0) , min(V_MAX_IDX, 1024));
+        auto ppair = getBlockThreadSplit(V_MAX_IDX);
+        recompute_globalCommAssignment<<<ppair.first, ppair.second>>>(V_MAX_IDX, RAW(newID), comm, RAW(globalCommAssignment));
+
+        cudaDeviceSynchronize();
+    }
     
     // printf("COMMUNITY MAPPING: \n");
     // thrust::copy(commSeq.begin(), commSeq.end(), std::ostream_iterator<uint32_t>(std::cout, " "));
@@ -665,12 +677,20 @@ int main(int argc, char **argv) {
 
     cudaDeviceSynchronize();
 
-    float mod = reassign_communities(V_MAX_IDX, V, E, W, k, ac, comm, newComm, m, MIN_GAIN);
+    thrust::device_vector<uint32_t> globCommAssignment(V_MAX_IDX + 1);
 
-    printf("TOTAL END modularity: %f\n", mod);
+    float mod = reassign_communities(V_MAX_IDX, V, E, W, k, ac, comm, newComm, m, MIN_GAIN, globCommAssignment);
+
+    printf("TOTAL END MODularity: %f\n", mod);
+
+    thrust::host_vector<uint32_t> resComm(V_MAX_IDX + 1);
+    
+    thrust::copy(globCommAssignment.begin(), globCommAssignment.end(), resComm.begin());
+
 
     if (VERBOSE) {
-        print_comm_assignment(V_MAX_IDX, comm);
+        // print_comm_assignment(V_MAX_IDX, comm);
+        print_comm_assignment(V_MAX_IDX, RAW(resComm));
     }
     // TODO cleanup
     // cudaFree(V);

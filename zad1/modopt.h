@@ -11,4 +11,5 @@ float reassign_communities(
                         uint32_t* __restrict__ comm,
                         uint32_t* __restrict__ newComm,
                         const float m,
-                        const float minGain);
+                        const float minGain,
+                        thrust::device_vector<uint32_t>& globCommAssignment);

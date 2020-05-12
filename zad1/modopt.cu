@@ -23,14 +23,6 @@
 #include "modopt.h"
 
 
-/**
- * TODO
- * 
- * TODO
- * 
- */
-
-
 __host__
 void contract(const uint32_t V_MAX_IDX,
                           uint32_t* __restrict__ V, 
@@ -669,7 +661,8 @@ float reassign_communities(
                         uint32_t* __restrict__ comm,
                         uint32_t* __restrict__ newComm,
                         const float m,
-                        const float minGain) {
+                        const float minGain,
+                        thrust::device_vector<uint32_t>& globCommAssignment) {
 
     // TODO free
     uint32_t* binsHost = (uint32_t*) malloc(sizeof(BINS));
@@ -681,7 +674,6 @@ float reassign_communities(
 
     // when running with --verbose option, we must keep proper community mapping
     // (community indeices are reassigned during contract phase) 
-    thrust::device_vector<uint32_t> globCommAssignment(V_MAX_IDX + 1);
     thrust::sequence(globCommAssignment.begin(), globCommAssignment.end());
 
     auto partitionGenerator = [=](int rightIdx) {
@@ -690,9 +682,11 @@ float reassign_communities(
         };
     };
 
-    float mod0, mod1;    
+    float mod0, mod1, maxMod;    
     mod0 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
     printf("MOD0 = %f\n", mod0);
+
+    maxMod = mod0;
 
     bool changedSth = true;
 
@@ -765,12 +759,13 @@ float reassign_communities(
 
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
 
+        maxMod = max(maxMod, mod1);
+
         printf("MOD1 %f\n", mod1);
 
-        // TODO TODO TODO
-        if (abs(mod1 - mod0) <= FLT_EPSILON) {
+        if (abs(mod1 - mod0) <= 0.001) {
             if (!changedSth) {
-                return mod1;
+                return maxMod;
             } else {
                 contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
                 changedSth = false;
@@ -790,9 +785,13 @@ float reassign_communities(
             // }
             // printf("\n");
 
-            float mod_debug = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
+            // float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
 
-            printf("MOD CONTRCT: %f\n", mod_debug);
+            // printf("MOD CONTRCT: %f\n", mod_contract);
+
+            // if (mod1 - mod_contract > FLT_EPSILON) {
+            //     printf("MOD ZLE: KONCZE\n");
+            // }
 
             // return mod1; // TODO debug  remove, up to first constract
             // break; // TODO, poprawić contract
