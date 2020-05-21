@@ -290,10 +290,20 @@ void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict_
         v[comm[i]].insert(i);
     }
 
+    int num = 0;
+
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        if (v[i].size() != 0)
+            num++;
+    }
+
+    printf("%d\n", num);
+    int idx = 1;
     for (int i = 1; i <= V_MAX_IDX; i++) {
         if (v[i].size() == 0)
             continue;
-        printf("%d ", i);
+        printf("%d ", idx);
+        idx++;
         std::copy(v[i].begin(), v[i].end(), std::ostream_iterator<uint32_t>(std::cout, " "));
         // PRINT(v[i].begin(), v[i].end());
         printf("\n");
