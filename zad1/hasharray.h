@@ -20,13 +20,6 @@ typedef struct KeyValueInt {
 
 class HashArray {
 public:
-    /**
-     * `num` must be power of 2, because of slowness of modulo operator.
-     */
-    __host__ static void init(KeyValueInt* memory, uint32_t num);
-
-    __host__ static void init(KeyValueFloat* memory, uint32_t num);
-
     // returns key
     CUDA_CALLABLE_MEMBER static uint32_t insertInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
 

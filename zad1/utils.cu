@@ -85,15 +85,6 @@ __host__
 std::ifstream get_input_content() {
     try {
         std::ifstream file_stream{FILE_PATH};
-        // std::string file_content((std::istreambuf_iterator<char>(file_stream)),
-        //                         std::istreambuf_iterator<char>());
-
-        // file_stream.close();
-        
-        // if (file_content.size() == 0) {
-        //     std::cerr << "Error reading input file" + std::string(FILE_PATH);
-        //     exit(1);
-        // }
 
         return file_stream;
 
@@ -188,16 +179,6 @@ ret_t parse_inut_graph(std::ifstream content) {
         V[i + 1] = act;
     }
 
-    // printf("V:\n");
-    // for (uint32_t i = 1; i < N; i++) {
-    //     printf("%d ", V[i]);
-    // }
-    // printf("E:\n");
-    // for (uint32_t i = 1; i < V[N]; i++) {
-    //     printf("%d ", E[i]);
-    // }
-    // exit(1);
-
     return std::make_tuple(N - 1, V, E, W, k, m);
 }
 
@@ -208,7 +189,6 @@ uint32_t next_2_pow(uint32_t n) {
     assert(n > 1);
     assert(n != UINT32_MAX);
 
-    // uint32_t n0 = n;
     n--;
     n |= n >> 1;
     n |= n >> 2;
@@ -217,25 +197,16 @@ uint32_t next_2_pow(uint32_t n) {
     n |= n >> 16;
     n++;
 
-    uint32_t tmp;
-    for (uint32_t i = 0; i <= 31; i++) {
-        tmp = 1 << i;
-        if (n == tmp)
-            return n;
-    }
-    // printf("AAAAAAAAAAAAA: n0: %d, N: %d, tmp: %d\n", n0, n, tmp);
-    assert(false);
-    return 0xFFFFFFFF; // for compiler to be happy about returning anything
-
+    return n;
 
     // TODO
     // may be better implementation, check it's corectness
-// https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__INTRINSIC__INT.html
+    // https://docs.nvidia.com/cuda/cuda-math-api/group__CUDA__MATH__INTRINSIC__INT.html
     // return 1 << (32 - _clz(n - 1) + 1); // +1 because it counts from int most significant bit (31th)
 }
 
 
-// TODO: to chyba nie pokazuje najwyższego bitu (od 31)
+// TODO: only 31 bits (without highest)
 __device__ 
 void binprintf(uint32_t v)
 {
@@ -290,12 +261,21 @@ void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict_
         v[comm[i]].insert(i);
     }
 
+    int num = 0;
+
+    for (int i = 1; i <= V_MAX_IDX; i++) {
+        if (v[i].size() != 0)
+            num++;
+    }
+
+    printf("%d\n", num);
+    int idx = 1;
     for (int i = 1; i <= V_MAX_IDX; i++) {
         if (v[i].size() == 0)
             continue;
-        printf("%d ", i);
+        printf("%d ", idx);
+        idx++;
         std::copy(v[i].begin(), v[i].end(), std::ostream_iterator<uint32_t>(std::cout, " "));
-        // PRINT(v[i].begin(), v[i].end());
         printf("\n");
     }
 }
