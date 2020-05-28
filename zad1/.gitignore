@@ -1,3 +1,4 @@
 *.mtx
 *.swp
 notes.txt
+./.vscode
