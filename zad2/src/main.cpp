@@ -4,6 +4,8 @@
 #include <string>
 #include <cassert>
 #include <cstring>
+#include <cstdint>
+#include <float.h>
 
 #include <iostream>
 bool VERBOSE;
@@ -13,6 +15,8 @@ int STEP_COUNT;
 double DELTA_TIME;
 
 const double E0 = 1.0;
+
+const double EPS = DBL_EPSILON;
 
 // https://stackoverflow.com/a/34660211
 float power(float base, unsigned int exp) {
@@ -29,7 +33,7 @@ float power(float base, unsigned int exp) {
     }
 } 
 
-inline double compute_V(double rij, double rik, double rkj) {
+double compute_V(double rij, double rik, double rkj) {
     double three = rij * rik * rkj;
     double rij2 = rij * rij;
     double rik2 = rik * rik;
