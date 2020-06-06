@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <float.h>
 
-// #include <mpi.h>
+#include <mpi.h>
 
 #include <iostream>
 
@@ -53,8 +53,8 @@ double compute_V(double rij, double rik, double rkj) {
 int main(int argc, char **argv) {
     parse_args(argc, argv);
 
-    // MPI_Init(NULL, NULL);
-    // MPI_Comm_size(MPI_COMM_WORLD, &NUM_PROC);
+    MPI_Init(NULL, NULL);
+    MPI_Comm_size(MPI_COMM_WORLD, &NUM_PROC);
 
     parse_input(get_input_content());
     return 0;
