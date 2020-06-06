@@ -7,6 +7,7 @@ CXX := g++
 # CXXFLAGS :=
 # LDFLAGS :=
 
+all: main
 
 main: $(OBJ_FILES)
 	echo "$(OBJ_FILES)"
