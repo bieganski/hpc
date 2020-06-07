@@ -19,8 +19,9 @@ char* FILE_PATH_IN;
 char* FILE_PATH_OUT;
 int STEP_COUNT;
 double DELTA_TIME;
-uint32_t N;
-uint32_t NUM_PROC;
+
+size_t N;
+int NUM_PROC;
 
 const double E0 = 1.0;
 
@@ -56,6 +57,25 @@ int main(int argc, char **argv) {
     MPI_Init(NULL, NULL);
     MPI_Comm_size(MPI_COMM_WORLD, &NUM_PROC);
 
-    parse_input(get_input_content());
+    int myRank;
+
+    MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
+
+    MsgBuf *myBuf;
+    if (myRank == 0) {
+        auto bufs = parse_input(get_input_content());
+
+        MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD); // broadcast value of N
+
+        mpi_distribute(bufs);
+        myBuf = bufs[0];
+        clear_buffers(bufs);
+    } else {
+        MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+
+        myBuf = (MsgBuf*) malloc(BUF_SIZE_RANK(myRank));
+        BUF_RECV(myBuf, BUF_SIZE_RANK(myRank), 0);
+    }
+    
     return 0;
 }

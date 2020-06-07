@@ -1,3 +1,5 @@
 notes.txt
 .vscode
 build
+.gdb_history
+peda-session*
