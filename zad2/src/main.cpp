@@ -12,7 +12,7 @@
 #include <iostream>
 
 #include "utils.hpp"
-
+#include "body.hpp"
 
 bool VERBOSE;
 char* FILE_PATH_IN;
@@ -23,32 +23,18 @@ double DELTA_TIME;
 size_t N;
 int NUM_PROC;
 
-const double E0 = 1.0;
-
 const double EPS = DBL_EPSILON;
 
-// https://stackoverflow.com/a/34660211
-float power(float base, unsigned int exp) {
-    if (exp == 0)
-       return 1;
-    float temp = power(base, exp / 2);       
-    if (exp % 2 == 0)
-        return temp*temp;
-    else {
-        if (exp > 0)
-            return base*temp*temp;
-        else
-            return (temp * temp) / base; // negative exponent computation 
+void handle_redundant_nodes(int myRank) {
+    if (myRank >= N) {
+        // i'm redundant
+        printf("### IM REDUNDANT: %d\n", myRank);
+        MPI_Finalize();
+        exit(0);
+    } else if (NUM_PROC > N) {
+        printf(">> REDUNDANT: obcinam %d do %d\n", NUM_PROC, N);
+        NUM_PROC = N;
     }
-} 
-
-double compute_V(double rij, double rik, double rkj) {
-    double three = rij * rik * rkj;
-    double rij2 = rij * rij;
-    double rik2 = rik * rik;
-    double rkj2 = rkj * rkj;
-    return E0 * (1 / power(three, 3) + 3 * ((-rij2 + rik2 + rkj2) * (rij2 - rik2 + rkj2) * (rij2 + rik2 - rkj2)) 
-        / 8 * power(three, 5));
 }
 
 int main(int argc, char **argv) {
@@ -67,15 +53,26 @@ int main(int argc, char **argv) {
 
         MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD); // broadcast value of N
 
-        mpi_distribute(bufs);
+        handle_redundant_nodes(myRank);
+
+        mpi_distribute(bufs); // TODO - now it may send uneccessary 16 bytes chunks to killed procs.
         myBuf = bufs[0];
         clear_buffers(bufs);
     } else {
         MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+        assert(N > 0);
 
-        myBuf = (MsgBuf*) malloc(BUF_SIZE_RANK(myRank));
+        handle_redundant_nodes(myRank);
+
+        myBuf = (MsgBuf*) malloc(MAX_BUF_SIZE);
         BUF_RECV(myBuf, BUF_SIZE_RANK(myRank), 0);
+        assert(myBuf->owner == myRank);
     }
-    
+
+    // here all the nodes got their particles subset in memory.
+    body_algo(myRank, myBuf);
+
+    MPI_Finalize();
+
     return 0;
 }

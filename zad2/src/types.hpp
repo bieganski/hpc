@@ -1,4 +1,5 @@
 #pragma once
+#include <cstdint> 
 
 typedef struct Pos {
     double x;
@@ -24,16 +25,23 @@ typedef struct Acc {
 
 #define PRINT_ACC(a) printf("ACC: (%f, %f, %f)\n", a.ax, a.ay, v.az);
 
+typedef struct Force {
+    double fx;
+    double fy;
+    double fz;
+} Force;
+
 typedef struct ParticleDescr {
     Pos pos;
     Vel vel;
     Acc acc;
+    Force force;
 } ParticleDescr;
 
 typedef struct MsgBuf {
     uint32_t owner;
     uint32_t particlesNum;
-    ParticleDescr *elems; // flexible array member (`particlesNum` elements), should point juts behind itself (rest of buffer)
+    ParticleDescr *elems; // it should point juts behind itself (rest of buffer) // it's like custom flexible array member implementation
 } MsgBuf;
 
 #define INIT_BUF(__msgBuf) (__msgBuf->elems = (ParticleDescr*) (((char*) __msgBuf + sizeof(MsgBuf)))) // (msgBuf->elems = (ParticleDescr*) ( ((char*) msgBuf)) )
@@ -41,3 +49,5 @@ typedef struct MsgBuf {
 #define BUF_SIZE(__msgBuf) (sizeof(MsgBuf) + ((__msgBuf)->particlesNum) * sizeof(ParticleDescr))
 
 #define BUF_SIZE_RANK(__rank) (sizeof(MsgBuf) + (MAX_PART_IDX(__rank) - MIN_PART_IDX(__rank)) * sizeof(ParticleDescr))
+
+#define MAX_BUF_SIZE (BUF_SIZE_RANK(0))

@@ -1,10 +1,9 @@
 #pragma once
 
-
 #include <fstream>
 #include <vector>
 #include <mpi.h>
-
+#include <cassert>
 
 #include "types.hpp"
 
@@ -15,7 +14,14 @@ extern int STEP_COUNT;
 extern double DELTA_TIME;
 extern size_t N;
 extern int NUM_PROC;
-using namespace std;
+
+
+
+#define ROOT_NODE 0
+#define NULL_TAG 0
+
+#define NEXT(rank) (rank + 1) % NUM_PROC
+#define PREV(rank) (rank == 0 ? NUM_PROC - 1 : rank - 1)
 
 int parse_args(int argc, char **argv);
 

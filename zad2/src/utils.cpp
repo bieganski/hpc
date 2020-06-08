@@ -112,10 +112,15 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
 
         size_t particlesNum = maxIdxExcl - minIdxIncl;
 
+        if (particlesNum == 0) {
+            printf("early return because of proccess flow\n");
+            return res;
+        }
+
         printf("%d) partnum: %d\n", i, particlesNum);
 
         std::cerr << "malloc of size " << sizeof(MsgBuf) + sizeof(ParticleDescr) * particlesNum << "\n";
-        MsgBuf *buf = (MsgBuf*) malloc(sizeof(MsgBuf) + sizeof(ParticleDescr) * particlesNum);
+        MsgBuf *buf = (MsgBuf*) calloc(sizeof(MsgBuf) + sizeof(ParticleDescr) * particlesNum, 1); // zeroed memory
 
         buf->owner = i;
         buf->particlesNum = particlesNum;
