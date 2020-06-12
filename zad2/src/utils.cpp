@@ -11,15 +11,16 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include <iomanip>
 
 #include <mpi.h>
 
 #include "utils.hpp"
 #include "types.hpp"
 
+extern MPI_Comm ACTIVE_NODES_WORLD;
+
 int parse_args(int argc, char **argv) {
-    int gflag = 0, fflag = 0;
-    int c;
 
     opterr = 0;
 
@@ -86,6 +87,7 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
         Pos p;
         Vel v;
         Acc a {.ax = 0.0, .ay = 0.0, .az = 0.0};
+        Force f {.fx = 0.0, .fy = 0.0, .fz = 0.0};
 
         tmp_ss >> p.x;
         tmp_ss >> p.y;
@@ -98,7 +100,7 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
         PRINT_POS(p);
         PRINT_VEL(v);
 
-        ParticleDescr descr {.pos = p, .vel = v, .acc = a};
+        ParticleDescr descr {.pos = p, .vel = v, .acc = a, .force = f};
 
         particlesVec.push_back(descr);
     }
@@ -143,25 +145,92 @@ void print_msg_buf(MsgBuf* buf) {
     PRINT_POS(buf->elems[0].pos);
     printf("\tlast: || ");
     PRINT_POS(buf->elems[buf->particlesNum - 1].pos);
-}
-
-/**
- * Process 0 is distributing, doesn't send to itself.
- */
-void mpi_distribute(std::vector<MsgBuf*>& vec) {
-    MPI_Request requests[vec.size()];
-    for (int i = 1; i < vec.size(); ++i) {
-        int rank = vec[i]->owner;
-        assert(BUF_SIZE_RANK(rank) == BUF_SIZE(vec[i]));
-        BUF_ISEND(vec[i], BUF_SIZE_RANK(rank), rank, &requests[i]);
-    }
-    MPI_Waitall(vec.size() - 1, &requests[1], MPI_STATUSES_IGNORE);
+    printf("\tACC: || (%2.10f, %2.10f, %2.10f)\n", ACCX(buf, 0), ACCY(buf, 0), ACCZ(buf, 0));
+    printf("\tFFF: || (%2.10f, %2.10f, %2.10f)\n", FX(buf, 0), FY(buf, 0), FZ(buf, 0));
 }
 
 // only called by rank 0 node
-void clear_buffers(std::vector<MsgBuf*>& vec) {
+void free_buffers(std::vector<MsgBuf*>& vec) {
     for (int i = 1; i < vec.size(); ++i) {
         free(vec[i]);
     }
 }
 
+/**
+ * Process 0 is distributing, doesn't send to itself.
+ */
+MsgBuf* distribute_bufs(std::vector<MsgBuf*>& vec, int myRank) {
+    MsgBuf* res;
+    if (myRank == ROOT_NODE) {
+        
+        MPI_Request *requests = (MPI_Request *) calloc(vec.size(), sizeof(MPI_Request));
+        for (int i = 1; i < vec.size(); ++i) {
+            int rank = vec[i]->owner;
+            assert(BUF_SIZE_RANK(rank) == BUF_SIZE(vec[i]));
+            BUF_ISEND(vec[i], BUF_SIZE_RANK(rank), rank, &requests[i]);
+        }
+        MPI_Waitall(vec.size() - 1, &requests[1], MPI_STATUSES_IGNORE);
+        free(requests);
+        free_buffers(vec);
+        res = vec[0];
+        INIT_BUF(res);
+        vec.clear();
+    } else {
+        res = (MsgBuf*) malloc(MAX_BUF_SIZE);
+        BUF_RECV(res, BUF_SIZE_RANK(myRank), 0);
+        INIT_BUF(res);
+        assert(res->owner == myRank);
+    }
+    return res; // TODO PORADZIC Z TYM
+}
+
+// TODO data cleaning
+std::vector<MsgBuf*> collect_results(MsgBuf* myDataPtr, char* gatherPtr, size_t dataSize, int rank) {
+    std::vector<MsgBuf*> res;
+    
+    assert(myDataPtr != NULL);
+    if (rank == ROOT_NODE) {
+        assert(gatherPtr != NULL);
+    } else {
+        assert(gatherPtr == NULL);
+    }
+
+    MPI_Gather(myDataPtr, MAX_BUF_SIZE, MPI_CHAR, gatherPtr, MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
+
+    if (rank != ROOT_NODE)
+        return res;
+
+    // MsgBuf *lol = (MsgBuf*) gatherPtr;
+    // printf("---------------------\n");
+    // print_msg_buf(lol);
+    // print_msg_buf(lol+1);
+    // print_msg_buf(lol+2);
+// printf("---------------------\n");
+    for (int i = 0; i < dataSize; i+= MAX_BUF_SIZE) {
+        MsgBuf *out, *tmp = (MsgBuf*) (gatherPtr + i);
+        out = (MsgBuf *) calloc(MAX_BUF_SIZE, 1);
+        memcpy(out, tmp, MAX_BUF_SIZE);
+        INIT_BUF(out);
+        res.push_back(out);
+    }
+
+    // printf("PA NA TO: \n");
+    // print_msg_buf((MsgBuf*) gatherPtr);
+    // res[0] = myDataPtr; // WTFFFF
+
+    return res;
+}
+
+
+void dump_results(char* gatherBuf, size_t dataSize, std::string fileName) {
+    std::ofstream out(fileName);
+    out << std::fixed << std::setprecision(16);
+    for (int i = 0; i < dataSize; i += MAX_BUF_SIZE) {
+        MsgBuf *tmp = (MsgBuf *) (gatherBuf + i);
+        INIT_BUF(tmp);
+        for (int j = 0; j < tmp->particlesNum; j++) {
+            out << POSX(tmp, j) << " " << POSY(tmp, j) << " " << POSZ(tmp, j) << " ";
+            out << VELX(tmp, j) << " " << VELY(tmp, j) << " " << VELZ(tmp, j) << "\n";
+        }
+    }
+}

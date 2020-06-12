@@ -45,23 +45,36 @@ inline size_t MAX_PART_IDX(int rank) {
 
 void print_msg_buf(MsgBuf* buf);
 
-void mpi_distribute(std::vector<MsgBuf*>& vec);
+MsgBuf* distribute_bufs(std::vector<MsgBuf*>& vec, int myRank);
 
 void clear_buffers(std::vector<MsgBuf*>& vec);
+
+void dump_results(char* gatherBuf, size_t dataSize, std::string fileName);
+
+std::vector<MsgBuf*> collect_results(MsgBuf* myDataPtr, char* gatherPtr, size_t dataSize, int rank);
 
 #define BUF_ISEND(__buf, __numBytes, __whom, __reqPtr) \
         do { \
             printf("Sending %d bytes to %d\n", __numBytes, __whom); \
-            MPI_Isend((void*) __buf, __numBytes, MPI_BYTE, __whom, 0, MPI_COMM_WORLD, __reqPtr); \
+            MPI_Isend((void*) __buf, __numBytes, MPI_BYTE, __whom, 0, ACTIVE_NODES_WORLD, __reqPtr); \
         } \
         while(0)
 
 #define BUF_RECV(__buf, __numBytes, __fromWhom) \
         do { \
             printf("Receiving %d bytes from %d\n", __numBytes, __fromWhom); \
-            MPI_Recv((void*) __buf, __numBytes, MPI_BYTE, __fromWhom, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE); \
+            MPI_Recv((void*) __buf, __numBytes, MPI_BYTE, __fromWhom, NULL_TAG, ACTIVE_NODES_WORLD, MPI_STATUS_IGNORE); \
             INIT_BUF(__buf); \
             printf("Odebrałem: "); \
             print_msg_buf(__buf); \
+        } \
+        while(0)
+
+#define BUF_IRECV(__buf, __numBytes, __fromWhom, __reqPtr) \
+        do { \
+            printf("Receiving ASYNC %d bytes from %d\n", __numBytes, __fromWhom); \
+            MPI_Irecv((void*) __buf, __numBytes, MPI_BYTE, __fromWhom, NULL_TAG, ACTIVE_NODES_WORLD, __reqPtr); \
+            INIT_BUF(__buf); \
+            printf("Odebrałem: ASYNC"); \
         } \
         while(0)

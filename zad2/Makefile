@@ -4,7 +4,9 @@ OBJ_DIR := build
 OBJ_FILES := $(shell ls src/*.cpp | sed -e "s/.cpp/.o/g" | sed -e "s~$(SRC_DIR)/~$(OBJ_DIR)/~g")
 
 CXX := mpic++
-CXXFLAGS := -g
+CXXFLAGS := -g -Wmaybe-uninitialized -O3 
+# -Wall -pedantic
+# -Wall -pedantic
 # LDFLAGS :=
 
 IGNORE := $(shell mkdir -p $(OBJ_DIR))

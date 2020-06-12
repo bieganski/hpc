@@ -7,4 +7,4 @@ constexpr double ZERO_EPS = std::pow(10, -10);
 const double E0 = 1.0;
 
 
-void body_algo(int rank, MsgBuf* buf);
+void body_algo(int rank, MsgBuf* buf, bool first_iter);

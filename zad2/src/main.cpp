@@ -37,6 +37,8 @@ void handle_redundant_nodes(int myRank) {
     }
 }
 
+MPI_Comm ACTIVE_NODES_WORLD;
+
 int main(int argc, char **argv) {
     parse_args(argc, argv);
 
@@ -44,34 +46,75 @@ int main(int argc, char **argv) {
     MPI_Comm_size(MPI_COMM_WORLD, &NUM_PROC);
 
     int myRank;
+    std::vector<MsgBuf*> bufs;
 
     MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
     MsgBuf *myBuf;
-    if (myRank == 0) {
-        auto bufs = parse_input(get_input_content());
-
-        MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD); // broadcast value of N
-
-        handle_redundant_nodes(myRank);
-
-        mpi_distribute(bufs); // TODO - now it may send uneccessary 16 bytes chunks to killed procs.
-        myBuf = bufs[0];
-        clear_buffers(bufs);
+    if (myRank == ROOT_NODE) {
+        bufs = parse_input(get_input_content());
+        MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, ROOT_NODE, MPI_COMM_WORLD);
+        MPI_Bcast(&DELTA_TIME, 1, MPI_DOUBLE, ROOT_NODE, MPI_COMM_WORLD);
     } else {
-        MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, 0, MPI_COMM_WORLD);
+        MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, ROOT_NODE, MPI_COMM_WORLD);
+        MPI_Bcast(&DELTA_TIME, 1, MPI_DOUBLE, ROOT_NODE, MPI_COMM_WORLD);
         assert(N > 0);
-
-        handle_redundant_nodes(myRank);
-
-        myBuf = (MsgBuf*) malloc(MAX_BUF_SIZE);
-        BUF_RECV(myBuf, BUF_SIZE_RANK(myRank), 0);
-        assert(myBuf->owner == myRank);
+        assert(DELTA_TIME > 0.0);
     }
 
-    // here all the nodes got their particles subset in memory.
-    body_algo(myRank, myBuf);
+    // Some nodes may not be used, if there is not enough data for everyone.
+    // At the same time, we want to use collectives (i.a. MPI_Gather), thus create new world
+    int color = myRank + 1 > N ? MPI_UNDEFINED : 123;
+    int res = MPI_Comm_split(MPI_COMM_WORLD, color, myRank, &ACTIVE_NODES_WORLD);
+    assert(res == MPI_SUCCESS);
+    if (color != MPI_UNDEFINED) {
+        int __newRank, __newSize;
+        MPI_Comm_rank(ACTIVE_NODES_WORLD, &__newRank);
+        printf("jestem ranka %d\n", __newRank);
+        MPI_Comm_size(ACTIVE_NODES_WORLD, &__newSize);
+        printf("jestem sizu %d\n", __newSize);
+        assert(myRank == __newRank);
+        assert(__newSize <= N);
+    }
 
+    handle_redundant_nodes(myRank);
+
+    myBuf = distribute_bufs(bufs, myRank);
+    assert(bufs.empty());
+
+
+    // here all the nodes got their particles subset in memory.
+    body_algo(myRank, myBuf, true);
+
+    if (myRank == 0) {
+        printf("kurwaaa: \n\n\n");
+        print_msg_buf(myBuf);
+    }
+
+    size_t dataSize = MAX_BUF_SIZE * NUM_PROC;
+    char *gatherBuf = myRank == ROOT_NODE ? (char*) calloc(dataSize, 1) : NULL;
+
+    bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
+    if (myRank == ROOT_NODE) {
+        for (int i = 0; i < bufs.size(); i++) {
+            // INIT_BUF(bufs[i]);
+            print_msg_buf(bufs[i]);
+        }
+    }
+    
+    // TODO Waitall
+    for (int i = 0; i < STEP_COUNT; i++) {
+        myBuf = distribute_bufs(bufs, myRank);
+        body_algo(myRank, myBuf, false);
+        bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
+        // after all phase, each thread's result is in it's 'myBuf', need to gather them
+    }
+
+    if (myRank == ROOT_NODE) {
+        std::string out(FILE_PATH_OUT);
+        out.append("_stepcount.txt");
+        dump_results(gatherBuf, dataSize, out);
+    }
     MPI_Finalize();
 
     return 0;
