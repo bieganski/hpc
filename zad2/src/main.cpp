@@ -54,10 +54,8 @@ int main(int argc, char **argv) {
     if (myRank == ROOT_NODE) {
         bufs = parse_input(get_input_content());
         MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, ROOT_NODE, MPI_COMM_WORLD);
-        MPI_Bcast(&DELTA_TIME, 1, MPI_DOUBLE, ROOT_NODE, MPI_COMM_WORLD);
     } else {
         MPI_Bcast(&N, 1, MPI_UNSIGNED_LONG, ROOT_NODE, MPI_COMM_WORLD);
-        MPI_Bcast(&DELTA_TIME, 1, MPI_DOUBLE, ROOT_NODE, MPI_COMM_WORLD);
         assert(N > 0);
         assert(DELTA_TIME > 0.0);
     }
@@ -67,15 +65,17 @@ int main(int argc, char **argv) {
     int color = myRank + 1 > N ? MPI_UNDEFINED : 123;
     int res = MPI_Comm_split(MPI_COMM_WORLD, color, myRank, &ACTIVE_NODES_WORLD);
     assert(res == MPI_SUCCESS);
-    if (color != MPI_UNDEFINED) {
-        int __newRank, __newSize;
-        MPI_Comm_rank(ACTIVE_NODES_WORLD, &__newRank);
-        printf("jestem ranka %d\n", __newRank);
-        MPI_Comm_size(ACTIVE_NODES_WORLD, &__newSize);
-        printf("jestem sizu %d\n", __newSize);
-        assert(myRank == __newRank);
-        assert(__newSize <= N);
-    }
+
+    // TODO wywalić
+    // if (color != MPI_UNDEFINED) {
+    //     int __newRank, __newSize;
+    //     MPI_Comm_rank(ACTIVE_NODES_WORLD, &__newRank);
+    //     printf("jestem ranka %d\n", __newRank);
+    //     MPI_Comm_size(ACTIVE_NODES_WORLD, &__newSize);
+    //     printf("jestem sizu %d\n", __newSize);
+    //     assert(myRank == __newRank);
+    //     assert(__newSize <= N);
+    // }
 
     handle_redundant_nodes(myRank);
 
@@ -84,23 +84,20 @@ int main(int argc, char **argv) {
 
 
     // here all the nodes got their particles subset in memory.
+    // first algorithm run updates only acceleration ('first_iter' true)
     body_algo(myRank, myBuf, true);
-
-    if (myRank == 0) {
-        printf("kurwaaa: \n\n\n");
-        print_msg_buf(myBuf);
-    }
 
     size_t dataSize = MAX_BUF_SIZE * NUM_PROC;
     char *gatherBuf = myRank == ROOT_NODE ? (char*) calloc(dataSize, 1) : NULL;
 
     bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
-    if (myRank == ROOT_NODE) {
-        for (int i = 0; i < bufs.size(); i++) {
-            // INIT_BUF(bufs[i]);
-            print_msg_buf(bufs[i]);
-        }
-    }
+    
+    // if (myRank == ROOT_NODE) {
+    //     for (int i = 0; i < bufs.size(); i++) {
+    //         // INIT_BUF(bufs[i]);
+    //         print_msg_buf(bufs[i]);
+    //     }
+    // }
     
     // TODO Waitall
     for (int i = 0; i < STEP_COUNT; i++) {
@@ -115,6 +112,7 @@ int main(int argc, char **argv) {
         out.append("_stepcount.txt");
         dump_results(gatherBuf, dataSize, out);
     }
+    
     MPI_Finalize();
 
     return 0;

@@ -342,6 +342,11 @@ void update_positions(MsgBuf* b1) {
 // It uses b1
 void move_particles(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank, bool first_iter) {
 
+    // TODO wywalić
+    INIT_BUF(b0);
+    INIT_BUF(b1);
+    INIT_BUF(b2);
+
     for (int i = 0; i < b1->particlesNum; i++) {
         FX(b1, i) += FX(b0, i);
         FY(b1, i) += FY(b0, i);
@@ -382,20 +387,16 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
     memcpy((void*) buf[2], b1, BUF_SIZE(b1));
     INIT_BUF(buf[2]);
 
+    // printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
     
-    // std::cerr << "malloc: " << BUF_SIZE(b1) << " bytes allocated\n";
-
-    int i = 0;
-    printf("triple: (%d, %d, %d)\n", buf[i]->owner, buf[(i + 1) % 3]->owner, buf[(i + 2) % 3]->owner);
-    
-    i = 2;
+    int i = 2;
 
     for (int s = NUM_PROC; s >= 0; s -= 3) {
         for (int step = 0; step < s; step++) {
             if (step != 0 || s != NUM_PROC) {
                 shift_right(rank, buf[i], tmpBuf);
             }
-            printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+            // printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
         i = (i + 1) % 3;
@@ -404,7 +405,7 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
         i = i == 0 ? 2 : i - 1; // prv(i, 3)
         shift_right(rank, buf[i], tmpBuf);
         if (rank / (NUM_PROC / 3) == 0) {
-            printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+            // printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
     }
