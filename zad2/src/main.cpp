@@ -28,11 +28,9 @@ const double EPS = DBL_EPSILON;
 void handle_redundant_nodes(int myRank) {
     if (myRank >= N) {
         // i'm redundant
-        printf("### IM REDUNDANT: %d\n", myRank);
         MPI_Finalize();
         exit(0);
     } else if (NUM_PROC > N) {
-        printf(">> REDUNDANT: obcinam %d do %d\n", NUM_PROC, N);
         NUM_PROC = N;
     }
 }
@@ -99,12 +97,12 @@ int main(int argc, char **argv) {
     //     }
     // }
     
-    // TODO Waitall
     for (int i = 0; i < STEP_COUNT; i++) {
         myBuf = distribute_bufs(bufs, myRank);
         body_algo(myRank, myBuf, false);
-        bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
+        
         // after all phase, each thread's result is in it's 'myBuf', need to gather them
+        bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
     }
 
     if (myRank == ROOT_NODE) {

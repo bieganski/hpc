@@ -97,9 +97,6 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
         tmp_ss >> v.vy;
         tmp_ss >> v.vz;
 
-        PRINT_POS(p);
-        PRINT_VEL(v);
-
         ParticleDescr descr {.pos = p, .vel = v, .acc = a, .force = f};
 
         particlesVec.push_back(descr);
@@ -116,7 +113,6 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
 
         if (particlesNum == 0) {
             // printf("early return because of proccess flow\n");
-            assert(false);
             return res;
         }
 
@@ -124,6 +120,8 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
 
         buf->owner = i;
         buf->particlesNum = particlesNum;
+
+        fprintf(stderr, "parse input: rank %d -> [%d, %d)\n", i, minIdxIncl, maxIdxExcl);
         
         INIT_BUF(buf);
         
@@ -179,7 +177,7 @@ MsgBuf* distribute_bufs(std::vector<MsgBuf*>& vec, int myRank) {
         INIT_BUF(res);
         assert(res->owner == myRank);
     }
-    return res; // TODO PORADZIC Z TYM
+    return res;
 }
 
 // TODO data cleaning

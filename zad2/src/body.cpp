@@ -3,6 +3,7 @@
 #include <iostream>
 #include <cmath>
 #include <iomanip>
+#include <tuple>
 
 #include "utils.hpp"
 #include "body.hpp"
@@ -20,6 +21,24 @@ void shift_right(int rank, MsgBuf* sendBuf, MsgBuf* tmpRecvBuf) {
     memcpy(sendBuf, tmpRecvBuf, BUF_SIZE(tmpRecvBuf));
     memset(tmpRecvBuf, '\0', MAX_BUF_SIZE);
     INIT_BUF(sendBuf);
+}
+
+void double_shift_init(int rank, MsgBuf* bufs[], MsgBuf* tmpRecvBuf) {
+    MPI_Sendrecv((void*) bufs[1], MAX_BUF_SIZE, MPI_CHAR,
+                NEXT(rank), NULL_TAG,
+                (void*) tmpRecvBuf, MAX_BUF_SIZE, MPI_CHAR,
+                PREV(rank), NULL_TAG, ACTIVE_NODES_WORLD, MPI_STATUS_IGNORE);
+    memcpy(bufs[0], tmpRecvBuf, BUF_SIZE(tmpRecvBuf));
+    memset(tmpRecvBuf, '\0', MAX_BUF_SIZE);
+    INIT_BUF(bufs[0]);
+
+    MPI_Sendrecv((void*) bufs[1], MAX_BUF_SIZE, MPI_CHAR,
+                PREV(rank), NULL_TAG,
+                (void*) tmpRecvBuf, MAX_BUF_SIZE, MPI_CHAR,
+                NEXT(rank), NULL_TAG, ACTIVE_NODES_WORLD, MPI_STATUS_IGNORE);
+    memcpy(bufs[2], tmpRecvBuf, BUF_SIZE(tmpRecvBuf));
+    memset(tmpRecvBuf, '\0', MAX_BUF_SIZE);
+    INIT_BUF(bufs[2]);
 }
 
 inline double normalize(double coord);
@@ -64,8 +83,6 @@ enum sign {
     sign_end
 };
 
-#include <tuple>
-
 // r12 = std::sqrt((p2.x - p1.x) * (p2.x - p1.x) +
 //                 (p2.y - p1.y) * (p2.y - p1.y) + 
 //                 (p2.z - p1.z) * (p2.z - p1.z)); 
@@ -91,10 +108,8 @@ enum sign {
 
 inline double normalize(double coord) {
     if (std::abs(coord) < ZERO_EPS) {
-        printf("TODO - SHITTY NORMALIZATION DETECTED \n");
         coord = ZERO_EPS;
     }
-        
     return coord;
 }
 
@@ -196,9 +211,9 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
     volatile double delta;
     double h, coord;
 
-    printf("@@@@@@@@@@@@@@@@@P0 : (%f, %f, %f)\n", p0.x, p0.y, p0.z);
-    printf("@@@@@@@@@@@@@@@@@P1 : (%f, %f, %f)\n", p1.x, p1.y, p1.z);
-    printf("@@@@@@@@@@@@@@@@@P2 : (%f, %f, %f)\n", p2.x, p2.y, p2.z);
+    // printf("@@@@@@@@@@@@@@@@@P0 : (%f, %f, %f)\n", p0.x, p0.y, p0.z);
+    // printf("@@@@@@@@@@@@@@@@@P1 : (%f, %f, %f)\n", p1.x, p1.y, p1.z);
+    // printf("@@@@@@@@@@@@@@@@@P2 : (%f, %f, %f)\n", p2.x, p2.y, p2.z);
 
     // for each particle_num {0, 1, 2}, compute 'plus' V and 'minus' V (for derivative purpose) 
     for (int numInt = first; numInt != particle_num_end; numInt++) {
@@ -208,10 +223,10 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
 
             auto tup = compute_distances(p0, p1, p2, dir, num, _sign);
             UNPACK(tup, r01, r02, r12);
-            printf("computing V[numInt=%d] for %9.9f, %9.9f, %9.9f\n", numInt, r01, r02, r12);
+            // printf("computing V[numInt=%d] for %9.9f, %9.9f, %9.9f\n", numInt, r01, r02, r12);
             restmp = compute_V(r01, r02, r12);
             res[numInt] += (_sign == plus ? restmp : -restmp);
-            printf("V[%d] (for rank %d) = %c %9.14f\n", numInt, rank, _sign == plus ? '+' : '-', restmp);
+            // printf("V[%d] (for rank %d) = %c %9.14f\n", numInt, rank, _sign == plus ? '+' : '-', restmp);
             if (_sign == minus) {
                 ; // printf("@@: UWAGA (rank: %d, dir: %d) res diff: %9.12f\n", rank, dir, res[numInt]);
             }
@@ -236,7 +251,7 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
         h = DERIV_EPS * coord;
         delta = (coord + h) - (coord - h);
         res[numInt] /= delta;
-        printf("@@******* PODZIELONE[%d] (rank %d): /=%f == %3.12f\n", numInt, rank, delta, res[numInt]);
+        // printf("@@******* PODZIELONE[%d] (rank %d): /=%f == %3.12f\n", numInt, rank, delta, res[numInt]);
     }
 
     // ret = - (res[0] + res[1] + res[2]) / MASS;
@@ -281,8 +296,8 @@ void compute_interactions(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank) {
                 FZ(b1, i1) += std::get<1>(fz);
 
                 FX(b2, i2) += std::get<2>(fx);
-                FY(b2, i2) += std::get<0>(fy);
-                FZ(b2, i2) += std::get<0>(fz);
+                FY(b2, i2) += std::get<2>(fy);
+                FZ(b2, i2) += std::get<2>(fz);
             }
         }
     }
@@ -309,13 +324,17 @@ void compute_acc_maybe_vel(MsgBuf* b1, bool compute_vel) {
             d.vel.vy = vy;
             d.vel.vz = vz;
 
-            printf("new VEL: (%3.9f, %3.9f, %3.9f)\n", d.vel.vx, d.vel.vy, d.vel.vz);
+            // printf("new VEL: (%3.9f, %3.9f, %3.9f)\n", d.vel.vx, d.vel.vy, d.vel.vz);
         }
 
         ACCX(b1, i) = ax;
         ACCY(b1, i) = ay;
         ACCZ(b1, i) = az;
-        printf("new ACC: (%3.9f, %3.9f, %3.9f)\n", ACCX(b1, i), ACCY(b1, i), ACCZ(b1, i));
+        // printf("new ACC: (%3.9f, %3.9f, %3.9f)\n", ACCX(b1, i), ACCY(b1, i), ACCZ(b1, i));
+
+        FX(b1, i) = 0.0;
+        FY(b1, i) = 0.0;
+        FZ(b1, i) = 0.0;
     }
 }
 
@@ -382,21 +401,36 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
     
     tmpBuf = (MsgBuf*) malloc(MAX_BUF_SIZE);
 
-    memcpy((void*) buf[0], b1, BUF_SIZE(b1));
-    INIT_BUF(buf[0]);
-    memcpy((void*) buf[2], b1, BUF_SIZE(b1));
-    INIT_BUF(buf[2]);
-
-    // printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+    // memcpy((void*) buf[0], b1, BUF_SIZE(b1));
+    // INIT_BUF(buf[0]);
+    // memcpy((void*) buf[2], b1, BUF_SIZE(b1));
+    // INIT_BUF(buf[2]);
     
-    int i = 2;
+    double_shift_init(rank, buf, tmpBuf);
 
-    for (int s = NUM_PROC; s >= 0; s -= 3) {
+    // printf("INIT: %d -> %d, %d\n", rank, buf[0]->owner, buf[2]->owner);
+    // MPI_Finalize();
+    // exit(0);
+
+    int i = 0;
+
+    for (int s = NUM_PROC - 3; s >= 0; s -= 3) {
         for (int step = 0; step < s; step++) {
-            if (step != 0 || s != NUM_PROC) {
+            if (step != 0 || s != NUM_PROC - 3) {
                 shift_right(rank, buf[i], tmpBuf);
+            } else {
+                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[1]->owner);
+                compute_interactions(buf[1], buf[1], buf[1], rank);
+                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[2]->owner);
+                compute_interactions(buf[1], buf[1], buf[2], rank);
+                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[0]->owner, buf[2]->owner);
+                compute_interactions(buf[0], buf[0], buf[2], rank);
             }
-            // printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+            if (s == NUM_PROC - 3) {
+                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[1]->owner);
+                compute_interactions(buf[0], buf[1], buf[1], rank);
+            }
+            fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
         i = (i + 1) % 3;
@@ -405,7 +439,7 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
         i = i == 0 ? 2 : i - 1; // prv(i, 3)
         shift_right(rank, buf[i], tmpBuf);
         if (rank / (NUM_PROC / 3) == 0) {
-            // printf("triple: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+            printf("\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[1]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
     }
@@ -416,14 +450,14 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
     size_t dataSize = 3 * MAX_BUF_SIZE * NUM_PROC;    
     char *gatherBuf = rank == ROOT_NODE ? (char*) malloc(dataSize) : NULL;
 
-    printf("rank %d: wysylam (%d, %d, %d)\n", rank, buf[0]->owner, buf[1]->owner, buf[2]->owner);
+    // printf("rank %d: wysylam (%d, %d, %d)\n", rank, buf[0]->owner, buf[1]->owner, buf[2]->owner);
     
     MPI_Gather(buf[0], MAX_BUF_SIZE, MPI_CHAR, gatherBuf,                               MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
     MPI_Gather(buf[1], MAX_BUF_SIZE, MPI_CHAR, gatherBuf + NUM_PROC * MAX_BUF_SIZE,     MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
     MPI_Gather(buf[2], MAX_BUF_SIZE, MPI_CHAR, gatherBuf + NUM_PROC * MAX_BUF_SIZE * 2, MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
 
     if (rank == ROOT_NODE) {
-        printf("UDALO SIE, wypisuje zerowy:\n");
+        // printf("UDALO SIE, wypisuje zerowy:\n");
 
         MPI_Request *rs = (MPI_Request *) calloc(3 * NUM_PROC, sizeof(MPI_Request));
         int i = 0, j = 0;
@@ -437,7 +471,7 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
                 j++;
             } else {
                 BUF_ISEND(tmp, BUF_SIZE(tmp), tmp->owner, &rs[i]);
-                printf("recv owner: %d, num: %d\n", tmp->owner, tmp->particlesNum);
+                // printf("recv owner: %d, num: %d\n", tmp->owner, tmp->particlesNum);
                 i++;
             }
         }
@@ -457,7 +491,7 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
         INIT_BUF(buf[1]);
         INIT_BUF(buf[2]);
 
-        printf("ALOHA! UDALO SIE ALL ODEBRAC! %d %d %d\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+        // printf("ALOHA! UDALO SIE ALL ODEBRAC! %d %d %d\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
     }
 
     // here each node got 3 copies of it's buffer
