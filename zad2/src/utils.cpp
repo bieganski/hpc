@@ -120,7 +120,9 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
 
     std::vector<MsgBuf*> res;
 
-    for (int i = 0; i < NUM_PROC; i++) {
+    int numProc = MOD3(NUM_PROC) ? NUM_PROC - 1 : NUM_PROC;
+
+    for (int i = 0; i < numProc; i++) {
         size_t minIdxIncl = MIN_PART_IDX(i), maxIdxExcl = MAX_PART_IDX(i);
 
         size_t particlesNum = maxIdxExcl - minIdxIncl;
