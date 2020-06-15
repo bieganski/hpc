@@ -23,8 +23,6 @@ double DELTA_TIME;
 size_t N;
 int NUM_PROC;
 
-const double EPS = DBL_EPSILON;
-
 void handle_redundant_nodes(int myRank) {
     if (myRank >= N) {
         // i'm redundant

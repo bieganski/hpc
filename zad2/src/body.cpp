@@ -55,8 +55,7 @@ double compute_V(double rij, double rik, double rkj) {
     // printf("TEST 5: %3.12f\n", std::pow(three, 5));
     
     res = 1.0 / std::pow(three, 3);
-    res += 3.0 * ((-rij2 + rik2 + rkj2) * (rij2 - rik2 + rkj2) * (rij2 + rik2 - rkj2));
-    res /= 8.0 * std::pow(three, 5); 
+    res += 3.0 * ((-rij2 + rik2 + rkj2) * (rij2 - rik2 + rkj2) * (rij2 + rik2 - rkj2)) / (8.0 * std::pow(three, 5));
     res *= E0;
 
     return res;
@@ -119,17 +118,17 @@ std::tuple<double, double, double> compute_distances(const Pos& p0, const Pos& p
     double p0x, p0y, p0z, p1x, p1y, p1z, p2x, p2y, p2z;
     double sign = (_sign == plus ? 1.0 : -1.0);
 
-    p0x = p0.x;
-    p0y = p0.y;
-    p0z = p0.z;
+    p0x = normalize(p0.x);
+    p0y = normalize(p0.y);
+    p0z = normalize(p0.z);
 
-    p1x = p1.x;
-    p1y = p1.y;
-    p1z = p1.z;
+    p1x = normalize(p1.x);
+    p1y = normalize(p1.y);
+    p1z = normalize(p1.z);
 
-    p2x = p2.x;
-    p2y = p2.y;
-    p2z = p2.z;
+    p2x = normalize(p2.x);
+    p2y = normalize(p2.y);
+    p2z = normalize(p2.z);
 
     if (which == first) {
         r12 = CURSED_DISTANCE12;
@@ -196,6 +195,9 @@ std::tuple<double, double, double> compute_distances(const Pos& p0, const Pos& p
     //         p1.x, p1.y, p1.z, p1x, p1y, p1z,
     //         p2.x, p2.y, p2.z, p2x, p2y, p2z);
     // }
+    r01 = normalize(r01);
+    r02 = normalize(r02);
+    r12 = normalize(r12);
     return std::make_tuple(r01, r02, r12);
 }
 
@@ -216,16 +218,17 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
     // printf("@@@@@@@@@@@@@@@@@P2 : (%f, %f, %f)\n", p2.x, p2.y, p2.z);
 
     // for each particle_num {0, 1, 2}, compute 'plus' V and 'minus' V (for derivative purpose) 
-    for (int numInt = first; numInt != particle_num_end; numInt++) {
+    for (int whichInt = first; whichInt != particle_num_end; whichInt++) {
+        particle_num which = static_cast<particle_num>(whichInt);
+        
         for (int signInt = plus; signInt != sign_end; signInt++) {
             sign _sign = static_cast<sign>(signInt);
-            particle_num num = static_cast<particle_num>(numInt);
 
-            auto tup = compute_distances(p0, p1, p2, dir, num, _sign);
+            auto tup = compute_distances(p0, p1, p2, dir, which, _sign);
             UNPACK(tup, r01, r02, r12);
-            // printf("computing V[numInt=%d] for %9.9f, %9.9f, %9.9f\n", numInt, r01, r02, r12);
+            // printf("computing V[numInt=%d] for %9.9f, %9.9f, %9.9f\n", whichInt, r01, r02, r12);
             restmp = compute_V(r01, r02, r12);
-            res[numInt] += (_sign == plus ? restmp : -restmp);
+            res[whichInt] += (_sign == plus ? restmp : -restmp);
             // printf("V[%d] (for rank %d) = %c %9.14f\n", numInt, rank, _sign == plus ? '+' : '-', restmp);
             if (_sign == minus) {
                 ; // printf("@@: UWAGA (rank: %d, dir: %d) res diff: %9.12f\n", rank, dir, res[numInt]);
@@ -233,12 +236,35 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
         }
         // we have computed f(x + h) - f(x - h), in next lines we divide by delta x
         Pos tmp;
-        if (numInt == 0) {
+        if (which == first) {
             tmp = p0;
-        } else if (numInt == 1) {
+            // if (dir == x) { 
+            //     coord = p0.x;
+            // } else if (dir == y) {
+            //     coord = p0.y;
+            // } else if (dir == z) {
+            //     coord = p0.z;
+            // }
+        } else if (which == second) {
             tmp = p1;
-        } else if (numInt == 2) {
+            // if (dir == x) { 
+            //     coord = p1.x;
+            // } else if (dir == y) {
+            //     coord = p1.y;
+            // } else if (dir == z) {
+            //     coord = p1.z;
+            // }
+        } else if (which == third) {
             tmp = p2;
+            // if (dir == x) { 
+            //     coord = p2.x;
+            // } else if (dir == y) {
+            //     coord = p2.y;
+            // } else if (dir == z) {
+            //     coord = p2.z;
+            // }
+        } else {
+            assert(false);
         }
         if (dir == x) { 
             coord = tmp.x;
@@ -246,12 +272,15 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
             coord = tmp.y;
         } else if (dir == z) {
             coord = tmp.z;
+        } else {
+            assert(false);
         }
+        // printf("PODZ: (rank %d) coord = %f\n", rank, coord);
         coord = normalize(coord);
         h = DERIV_EPS * coord;
         delta = (coord + h) - (coord - h);
-        res[numInt] /= delta;
-        // printf("@@******* PODZIELONE[%d] (rank %d): /=%f == %3.12f\n", numInt, rank, delta, res[numInt]);
+        res[whichInt] /= delta;
+        // printf("@@******* PODZIELONE[%d] (rank %d): /=%f == %3.12f\n", whichInt, rank, delta, res[whichInt]);
     }
 
     // ret = - (res[0] + res[1] + res[2]) / MASS;
@@ -266,27 +295,23 @@ void compute_interactions(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank) {
     for (int i0 = 0; i0 < b0->particlesNum; i0++) {
         for (int i1 = 0; i1 < b1->particlesNum; i1++) {
             for (int i2 = 0; i2 < b2->particlesNum; i2++) {
-                if (b0->owner == b1->owner && i0 == i1)
+                if (b0->owner == b1->owner && i0 >= i1)
                     continue;
-                if (b0->owner == b2->owner && i0 == i2)
+                if (b0->owner == b2->owner && i0 >= i2)
                     continue;
-                if (b1->owner == b2->owner && i1 == i2)
+                if (b1->owner == b2->owner && i1 >= i2)
                     continue;
                     
-                Pos p0, p1, p2;
-                p0 = b0->elems[i0].pos;
-                p1 = b1->elems[i1].pos;
-                p2 = b2->elems[i2].pos;
-
-                assert(p0.x != p1.x && p0.x != p2.x && p1.x != p2.x);
-                assert(p0.y != p1.y && p0.y != p2.y && p1.y != p2.y);
-                assert(p0.z != p1.z && p0.z != p2.z && p1.z != p2.z);
+                // Pos p0, p1, p2;
+                Pos& p0 = b0->elems[i0].pos;
+                Pos& p1 = b1->elems[i1].pos;
+                Pos& p2 = b2->elems[i2].pos;
 
                 auto fx = compute_force(p0, p1, p2, x, rank);
                 auto fy = compute_force(p0, p1, p2, y, rank);
                 auto fz = compute_force(p0, p1, p2, z, rank);
 
-                // printf("FORCES: (%9.9f, %9.9f, %9.9f)\n", fx, fy, fz); BAD FORMAT (tuple)
+                // printf("FORCES: (%9.9f, %9.9f, %9.9f)\n", std::get<0>(fx), std::get<0>(fy), std::get<0>(fz));
                 FX(b0, i0) += std::get<0>(fx);
                 FY(b0, i0) += std::get<0>(fy);
                 FZ(b0, i0) += std::get<0>(fz);
@@ -331,10 +356,6 @@ void compute_acc_maybe_vel(MsgBuf* b1, bool compute_vel) {
         ACCY(b1, i) = ay;
         ACCZ(b1, i) = az;
         // printf("new ACC: (%3.9f, %3.9f, %3.9f)\n", ACCX(b1, i), ACCY(b1, i), ACCZ(b1, i));
-
-        FX(b1, i) = 0.0;
-        FY(b1, i) = 0.0;
-        FZ(b1, i) = 0.0;
     }
 }
 
@@ -347,8 +368,8 @@ void update_positions(MsgBuf* b1) {
         // printf("LOL OLD: (%2.14f, %2.14f, %2.14f)\n", d.pos.x, d.pos.y, d.pos.z);
         x = d.pos.x + d.vel.vx * DELTA_TIME + 0.5 * d.acc.ax * DELTA_TIME * DELTA_TIME;
         y = d.pos.y + d.vel.vy * DELTA_TIME + 0.5 * d.acc.ay * DELTA_TIME * DELTA_TIME;
-        z = d.pos.z + d.vel.vz * DELTA_TIME + 0.5 * d.acc.az * DELTA_TIME * DELTA_TIME;
-        // printf("LOL: (%2.14f, %2.14f, %2.14f)\n", x, y, z);
+        z = d.pos.z + d.vel.vz * DELTA_TIME + 0.5 * d.acc.az * DELTA_TIME * DELTA_TIME; 
+        // printf("LOL: (%2.14f, %2.14f, %2.14f), dt=%f, acc = (%2.14f, %2.14f, %2.14f)\n", x, y, z, DELTA_TIME, d.acc.ax, d.acc.ay, d.acc.az);
 
         // update positions
         d.pos.x = x;
@@ -366,6 +387,8 @@ void move_particles(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank, bool first_ite
     INIT_BUF(b1);
     INIT_BUF(b2);
 
+    assert(b1->owner == b0->owner && b1->owner == b2->owner);
+
     for (int i = 0; i < b1->particlesNum; i++) {
         FX(b1, i) += FX(b0, i);
         FY(b1, i) += FY(b0, i);
@@ -374,15 +397,19 @@ void move_particles(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank, bool first_ite
         FX(b1, i) += FX(b2, i);
         FY(b1, i) += FY(b2, i);
         FZ(b1, i) += FZ(b2, i);
+
+        // TODO
+        FX(b1, i) *= 2;
+        FY(b1, i) *= 2;
+        FZ(b1, i) *= 2;
+        // printf("OLOL: (%f, %f, %f)\n", FX(b1, i), FY(b1, i), FZ(b1, i));
     }
 
     if (first_iter) {
         compute_acc_maybe_vel(b1, false); // start velocity was given
-        return;
+    } else {
+        compute_acc_maybe_vel(b1, true);
     }
-
-    update_positions(b1);
-    compute_acc_maybe_vel(b1, true);
 }
 
 
@@ -395,7 +422,19 @@ void move_particles(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank, bool first_ite
 void body_algo(int rank, MsgBuf* b1, bool first_iter) {
     MsgBuf* tmpBuf;
     MsgBuf* buf[3];
+
+    for (int i = 0; i < b1->particlesNum; i++) {
+        FX(b1, i) = 0.0;
+        FY(b1, i) = 0.0;
+        FZ(b1, i) = 0.0;
+    }
+
+    if (!first_iter) {
+        update_positions(b1);
+    }
+
     buf[1] = b1;
+
     buf[0] = (MsgBuf*) malloc(MAX_BUF_SIZE);
     buf[2] = (MsgBuf*) malloc(MAX_BUF_SIZE);
     
@@ -419,18 +458,18 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
             if (step != 0 || s != NUM_PROC - 3) {
                 shift_right(rank, buf[i], tmpBuf);
             } else {
-                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[1]->owner);
+                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[1]->owner);
                 compute_interactions(buf[1], buf[1], buf[1], rank);
-                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[2]->owner);
+                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[2]->owner);
                 compute_interactions(buf[1], buf[1], buf[2], rank);
-                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[0]->owner, buf[2]->owner);
+                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[0]->owner, buf[2]->owner);
                 compute_interactions(buf[0], buf[0], buf[2], rank);
             }
             if (s == NUM_PROC - 3) {
-                fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[1]->owner);
+                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[1]->owner);
                 compute_interactions(buf[0], buf[1], buf[1], rank);
             }
-            fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
+            // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
         i = (i + 1) % 3;
