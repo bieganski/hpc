@@ -102,11 +102,11 @@ int main(int argc, char **argv) {
         // after all phase, each thread's result is in it's 'myBuf', need to gather them
         bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
 
-        if (VERBOSE) {
+        if (myRank == ROOT_NODE && VERBOSE) {
             std::string out(FILE_PATH_OUT);
             out.append("_" + std::to_string(i + 1) + ".txt");
             std::cout << "AAA: " << out << "\n";
-            // dump_results(gatherBuf, dataSize, out);
+            dump_results(gatherBuf, dataSize, out);
         }
     }
 
