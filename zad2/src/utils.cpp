@@ -82,6 +82,8 @@ void handle_redundant_nodes(int myRank) {
 }
 
 int compute_color(int myRank) {
+    if (N <= NUM_PROC)
+        return 123;
     int res = myRank + 1 > N ? MPI_UNDEFINED : 123;
     if (MOD3(N) && myRank == N - 1) {
         return MPI_UNDEFINED;
