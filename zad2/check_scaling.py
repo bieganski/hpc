@@ -34,7 +34,7 @@ TESTS_STRONG = [
 TIME_STRONG_SEQ = 191 # 3:11
 
 TIMES_WEAK_SEQ = [
-    
+    1
 ]
 
 TIMES_WEAK = []
@@ -46,14 +46,14 @@ cmd = lambda n, s, d : command % (n, join(TEST_DIR, TEST_IN), OUT_TMP, s, d)
 def run(n,s,d):
     start = time.time()
     os.system(cmd(n,s,d))
-    print(time.time() - start)
-    exit(1)
+    return (time.time() - start)
 
 
 def all():
     for n,s,d in TESTS_STRONG:
-        run(n,s,d)
-        break
+        print(cmd(n,s,d))
+        time = run(n,s,d)
+        print(time)
 
 if __name__ == "__main__":
     all()
