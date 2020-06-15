@@ -47,12 +47,8 @@
 % Once we have all of our packages and setting announced, we need to begin our document.  You will notice that at the end of the writing there is an end document statements.  Many options use this begin and end syntax.
 
 \author{Mateusz Biegański}
-\title{Louvain community detection - report}
+\title{ Molecular simulation with three-body interactions - report}
 \maketitle
-
-\begin{center}
-    \Large Louvain community detection - report \normalsize
-\end{center}
 
 \begin{abstract}
     \par I present my implementation of parallel Molecular simulation with three-body interactions, according to Penporn Koanantakool, Katherine Yelick paper \textbf{A Computation- and Communication-Optimal Parallel Direct 3-Body Algorithm} (2015).
@@ -141,7 +137,7 @@ Strong scaling was computed using \textbf{tests/test$\_$100.txt} file and consta
  \hline
  \textbf{INPUT NAME} & \textbf{PARTICLES} & \textbf{NODES} & \textbf{STEPS} & \textbf{TIME [s]} & \textbf{SPEEDUP} &
  \hline
- \textbf{test$\_$100.txt} & 100 & 1 & 40 & 19.36 & 1.0 \\
+ \textbf{test$\_$100.txt} & 100 & 1 & 40 & 19.36 & - \\
  \hline
  \textbf{test$\_$100.txt} & 100 & 4 & 40 & 9.68 & 2.0 \\
  \hline
@@ -160,25 +156,30 @@ Strong scaling was computed using \textbf{tests/test$\_$100.txt} file and consta
 
 \subsection*{Weak scaling}
 
+I assumed time for \code{N = 1, stepcount = 2 } == time for \code{N = 4, stepcount = 8}.
+
 \begin{center}
 \begin{tabular}{ |c c c c c c| }
  \hline
  \textbf{INPUT NAME} & \textbf{PARTICLES} & \textbf{NODES} & \textbf{STEPS} & \textbf{TIME [s]} & \textbf{SPEEDUP} &
  \hline
- \textbf{test$\_$100.txt} & 100 & 1 & 8 & 19.36 & 1.0 \\
+ \textbf{test$\_$100.txt} & 100 & 4 & 8 & 2.16 & 1.0 \\
  \hline
- \textbf{test$\_$100.txt} & 100 & 4 & 40 & 9.68 & 2.0 \\
+ \textbf{test$\_$100.txt} & 100 & 8 & 16 & 2.00 & 1.08 \\
  \hline
- \textbf{test$\_$100.txt} & 100 & 8 & 40 & 5.23 & 3.72 \\
+ \textbf{test$\_$100.txt} & 100 & 16 & 32 & 2.37 & 0.95 \\
  \hline
- \textbf{test$\_$100.txt} & 100 & 16 & 40 & 2.95 & 6.56 \\
+ \textbf{test$\_$100.txt} & 100 & 32 & 64 & 2.89 & 0.75 \\
  \hline
- \textbf{test$\_$100.txt} & 100 & 32 & 40 & 2.16 & 8.96 \\
- \hline
- \textbf{test$\_$100.txt} & 100 & 64 & 40 & 6.53 & 2.96 \\
+ \textbf{test$\_$100.txt} & 100 & 64 & 128 & 16.56 & 0.13 \\
  \hline
 \end{tabular}
 \end{center}
+
+
+\subsection*{Results interpretation}
+
+We can see beautiful both weak and strong scaling over $\{ 4, 8, 16\}$ nodes, but what is interesting, there is a radical collapse in algorithm's efficiency when numerical intensity per node decreases. We can see communication against processor usage overload.
 
 
 \end{document}
