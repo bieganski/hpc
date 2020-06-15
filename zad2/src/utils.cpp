@@ -112,7 +112,6 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
         size_t particlesNum = maxIdxExcl - minIdxIncl;
 
         if (particlesNum == 0) {
-            // printf("early return because of proccess flow\n");
             return res;
         }
 
@@ -121,8 +120,6 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
         buf->owner = i;
         buf->particlesNum = particlesNum;
 
-        // fprintf(stderr, "parse input: rank %d -> [%d, %d)\n", i, minIdxIncl, maxIdxExcl);
-        
         INIT_BUF(buf);
         
         for (int j = 0; j < particlesNum; j++) {
@@ -196,12 +193,6 @@ std::vector<MsgBuf*> collect_results(MsgBuf* myDataPtr, char* gatherPtr, size_t 
     if (rank != ROOT_NODE)
         return res;
 
-    // MsgBuf *lol = (MsgBuf*) gatherPtr;
-    // printf("---------------------\n");
-    // print_msg_buf(lol);
-    // print_msg_buf(lol+1);
-    // print_msg_buf(lol+2);
-// printf("---------------------\n");
     for (int i = 0; i < dataSize; i+= MAX_BUF_SIZE) {
         MsgBuf *out, *tmp = (MsgBuf*) (gatherPtr + i);
         out = (MsgBuf *) calloc(MAX_BUF_SIZE, 1);
@@ -209,10 +200,6 @@ std::vector<MsgBuf*> collect_results(MsgBuf* myDataPtr, char* gatherPtr, size_t 
         INIT_BUF(out);
         res.push_back(out);
     }
-
-    // printf("PA NA TO: \n");
-    // print_msg_buf((MsgBuf*) gatherPtr);
-    // res[0] = myDataPtr; // WTFFFF
 
     return res;
 }

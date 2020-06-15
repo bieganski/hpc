@@ -62,17 +62,6 @@ int main(int argc, char **argv) {
     int res = MPI_Comm_split(MPI_COMM_WORLD, color, myRank, &ACTIVE_NODES_WORLD);
     assert(res == MPI_SUCCESS);
 
-    // TODO wywalić
-    // if (color != MPI_UNDEFINED) {
-    //     int __newRank, __newSize;
-    //     MPI_Comm_rank(ACTIVE_NODES_WORLD, &__newRank);
-    //     printf("jestem ranka %d\n", __newRank);
-    //     MPI_Comm_size(ACTIVE_NODES_WORLD, &__newSize);
-    //     printf("jestem sizu %d\n", __newSize);
-    //     assert(myRank == __newRank);
-    //     assert(__newSize <= N);
-    // }
-
     handle_redundant_nodes(myRank);
 
     myBuf = distribute_bufs(bufs, myRank);
@@ -88,12 +77,6 @@ int main(int argc, char **argv) {
 
     bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
     
-    // if (myRank == ROOT_NODE) {
-    //     for (int i = 0; i < bufs.size(); i++) {
-    //         // INIT_BUF(bufs[i]);
-    //         print_msg_buf(bufs[i]);
-    //     }
-    // }
     
     for (int i = 0; i < STEP_COUNT; i++) {
         myBuf = distribute_bufs(bufs, myRank);

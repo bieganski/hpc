@@ -50,10 +50,6 @@ double compute_V(double rij, double rik, double rkj) {
     double rkj2 = rkj * rkj;
     double res;
 
-    // printf("TEST RIJK2 = %3.12f, %3.12f, %3.12f\n", rij2, rik2, rkj2);
-    // printf("TEST 3: %3.12f\n", std::pow(three, 3));
-    // printf("TEST 5: %3.12f\n", std::pow(three, 5));
-    
     res = 1.0 / std::pow(three, 3);
     res += 3.0 * ((-rij2 + rik2 + rkj2) * (rij2 - rik2 + rkj2) * (rij2 + rik2 - rkj2)) / (8.0 * std::pow(three, 5));
     res *= E0;
@@ -81,16 +77,6 @@ enum sign {
     minus,
     sign_end
 };
-
-// r12 = std::sqrt((p2.x - p1.x) * (p2.x - p1.x) +
-//                 (p2.y - p1.y) * (p2.y - p1.y) + 
-//                 (p2.z - p1.z) * (p2.z - p1.z)); 
-// r01 = std::sqrt((p1.x - p0.x) * (p1.x - p0.x) +
-//                 (p1.y - p0.y) * (p1.y - p0.y) + 
-//                 (p1.z - p0.z) * (p1.z - p0.z));
-// r02 = std::sqrt((p2.x - p0.x) * (p2.x - p0.x) +
-//                 (p2.y - p0.y) * (p2.y - p0.y) + 
-//                 (p2.z - p0.z) * (p2.z - p0.z));
 
 // these are curded because no argument passing, but more readable
 #define CURSED_DISTANCE01  (std::sqrt((p1x - p0x) * (p1x - p0x) + \
@@ -179,22 +165,7 @@ std::tuple<double, double, double> compute_distances(const Pos& p0, const Pos& p
         r02 = CURSED_DISTANCE02;
         r12 = CURSED_DISTANCE12;
     }
-    // if (d == x) {
-    //     printf("\ndir X: \n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n\n", 
-    //         p0.x, p0.y, p0.z, p0x, p0y, p0z,
-    //         p1.x, p1.y, p1.z, p1x, p1y, p1z,
-    //         p2.x, p2.y, p2.z, p2x, p2y, p2z);
-    // } else if (d == y) {
-    //     printf("\ndir Y: \n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n\n", 
-    //         p0.x, p0.y, p0.z, p0x, p0y, p0z,
-    //         p1.x, p1.y, p1.z, p1x, p1y, p1z,
-    //         p2.x, p2.y, p2.z, p2x, p2y, p2z);
-    // } else {
-    //     printf("\ndir Z: \n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n(%3.12f, %3.12f, %3.12f) -> (%3.12f, %3.12f, %3.12f)\n\n", 
-    //         p0.x, p0.y, p0.z, p0x, p0y, p0z,
-    //         p1.x, p1.y, p1.z, p1x, p1y, p1z,
-    //         p2.x, p2.y, p2.z, p2x, p2y, p2z);
-    // }
+
     r01 = normalize(r01);
     r02 = normalize(r02);
     r12 = normalize(r12);
@@ -213,10 +184,6 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
     volatile double delta;
     double h, coord;
 
-    // printf("@@@@@@@@@@@@@@@@@P0 : (%f, %f, %f)\n", p0.x, p0.y, p0.z);
-    // printf("@@@@@@@@@@@@@@@@@P1 : (%f, %f, %f)\n", p1.x, p1.y, p1.z);
-    // printf("@@@@@@@@@@@@@@@@@P2 : (%f, %f, %f)\n", p2.x, p2.y, p2.z);
-
     // for each particle_num {0, 1, 2}, compute 'plus' V and 'minus' V (for derivative purpose) 
     for (int whichInt = first; whichInt != particle_num_end; whichInt++) {
         particle_num which = static_cast<particle_num>(whichInt);
@@ -226,43 +193,18 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
 
             auto tup = compute_distances(p0, p1, p2, dir, which, _sign);
             UNPACK(tup, r01, r02, r12);
-            // printf("computing V[numInt=%d] for %9.9f, %9.9f, %9.9f\n", whichInt, r01, r02, r12);
             restmp = compute_V(r01, r02, r12);
             res[whichInt] += (_sign == plus ? restmp : -restmp);
-            // printf("V[%d] (for rank %d) = %c %9.14f\n", numInt, rank, _sign == plus ? '+' : '-', restmp);
-            if (_sign == minus) {
-                ; // printf("@@: UWAGA (rank: %d, dir: %d) res diff: %9.12f\n", rank, dir, res[numInt]);
-            }
         }
+
         // we have computed f(x + h) - f(x - h), in next lines we divide by delta x
         Pos tmp;
         if (which == first) {
             tmp = p0;
-            // if (dir == x) { 
-            //     coord = p0.x;
-            // } else if (dir == y) {
-            //     coord = p0.y;
-            // } else if (dir == z) {
-            //     coord = p0.z;
-            // }
         } else if (which == second) {
             tmp = p1;
-            // if (dir == x) { 
-            //     coord = p1.x;
-            // } else if (dir == y) {
-            //     coord = p1.y;
-            // } else if (dir == z) {
-            //     coord = p1.z;
-            // }
         } else if (which == third) {
             tmp = p2;
-            // if (dir == x) { 
-            //     coord = p2.x;
-            // } else if (dir == y) {
-            //     coord = p2.y;
-            // } else if (dir == z) {
-            //     coord = p2.z;
-            // }
         } else {
             assert(false);
         }
@@ -275,18 +217,11 @@ std::tuple<double, double, double> compute_force(const Pos& p0, const Pos& p1, c
         } else {
             assert(false);
         }
-        // printf("PODZ: (rank %d) coord = %f\n", rank, coord);
         coord = normalize(coord);
         h = DERIV_EPS * coord;
         delta = (coord + h) - (coord - h);
         res[whichInt] /= delta;
-        // printf("@@******* PODZIELONE[%d] (rank %d): /=%f == %3.12f\n", whichInt, rank, delta, res[whichInt]);
     }
-
-    // ret = - (res[0] + res[1] + res[2]) / MASS;
-    // ret = res[0] + res[1] + res[2];
-    // printf("ret=res[0] + res[1] + res[2] %2.12f = %2.12f + %2.12f + %2.12f\n", ret, res[0], res[1], res[2]);
-    // printf("@@ RET: (d=%d): %f\n", dir, ret);
 
     return std::make_tuple(res[0], res[1], res[2]);
 }
@@ -302,7 +237,6 @@ void compute_interactions(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank) {
                 if (b1->owner == b2->owner && i1 >= i2)
                     continue;
                     
-                // Pos p0, p1, p2;
                 Pos& p0 = b0->elems[i0].pos;
                 Pos& p1 = b1->elems[i1].pos;
                 Pos& p2 = b2->elems[i2].pos;
@@ -311,7 +245,6 @@ void compute_interactions(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank) {
                 auto fy = compute_force(p0, p1, p2, y, rank);
                 auto fz = compute_force(p0, p1, p2, z, rank);
 
-                // printf("FORCES: (%9.9f, %9.9f, %9.9f)\n", std::get<0>(fx), std::get<0>(fy), std::get<0>(fz));
                 FX(b0, i0) += std::get<0>(fx);
                 FY(b0, i0) += std::get<0>(fy);
                 FZ(b0, i0) += std::get<0>(fz);
@@ -348,28 +281,22 @@ void compute_acc_maybe_vel(MsgBuf* b1, bool compute_vel) {
             d.vel.vx = vx;
             d.vel.vy = vy;
             d.vel.vz = vz;
-
-            // printf("new VEL: (%3.9f, %3.9f, %3.9f)\n", d.vel.vx, d.vel.vy, d.vel.vz);
         }
 
         ACCX(b1, i) = ax;
         ACCY(b1, i) = ay;
         ACCZ(b1, i) = az;
-        // printf("new ACC: (%3.9f, %3.9f, %3.9f)\n", ACCX(b1, i), ACCY(b1, i), ACCZ(b1, i));
     }
 }
 
 void update_positions(MsgBuf* b1) {
     double x, y, z;
     for (int i = 0; i < b1->particlesNum; i++) {
-        // printf("-- LOL  %d ### force %d: (%9.16f, %9.16f, %9.16f)\n", rank, i, FX(b1, i), FY(b1, i), FZ(b1, i));
         ParticleDescr& d = b1->elems[i];
-        // assert(d.pos.x != 0.0 &&  d.pos.y != 0.0 && d.pos.z != 0.0); // TODO wywalić
-        // printf("LOL OLD: (%2.14f, %2.14f, %2.14f)\n", d.pos.x, d.pos.y, d.pos.z);
+
         x = d.pos.x + d.vel.vx * DELTA_TIME + 0.5 * d.acc.ax * DELTA_TIME * DELTA_TIME;
         y = d.pos.y + d.vel.vy * DELTA_TIME + 0.5 * d.acc.ay * DELTA_TIME * DELTA_TIME;
         z = d.pos.z + d.vel.vz * DELTA_TIME + 0.5 * d.acc.az * DELTA_TIME * DELTA_TIME; 
-        // printf("LOL: (%2.14f, %2.14f, %2.14f), dt=%f, acc = (%2.14f, %2.14f, %2.14f)\n", x, y, z, DELTA_TIME, d.acc.ax, d.acc.ay, d.acc.az);
 
         // update positions
         d.pos.x = x;
@@ -382,11 +309,6 @@ void update_positions(MsgBuf* b1) {
 // It uses b1
 void move_particles(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank, bool first_iter) {
 
-    // TODO wywalić
-    INIT_BUF(b0);
-    INIT_BUF(b1);
-    INIT_BUF(b2);
-
     assert(b1->owner == b0->owner && b1->owner == b2->owner);
 
     for (int i = 0; i < b1->particlesNum; i++) {
@@ -398,11 +320,9 @@ void move_particles(MsgBuf* b0, MsgBuf* b1, MsgBuf* b2, int rank, bool first_ite
         FY(b1, i) += FY(b2, i);
         FZ(b1, i) += FZ(b2, i);
 
-        // TODO
         FX(b1, i) *= 2;
         FY(b1, i) *= 2;
         FZ(b1, i) *= 2;
-        // printf("OLOL: (%f, %f, %f)\n", FX(b1, i), FY(b1, i), FZ(b1, i));
     }
 
     if (first_iter) {
@@ -440,16 +360,7 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
     
     tmpBuf = (MsgBuf*) malloc(MAX_BUF_SIZE);
 
-    // memcpy((void*) buf[0], b1, BUF_SIZE(b1));
-    // INIT_BUF(buf[0]);
-    // memcpy((void*) buf[2], b1, BUF_SIZE(b1));
-    // INIT_BUF(buf[2]);
-    
     double_shift_init(rank, buf, tmpBuf);
-
-    // printf("INIT: %d -> %d, %d\n", rank, buf[0]->owner, buf[2]->owner);
-    // MPI_Finalize();
-    // exit(0);
 
     int i = 0;
 
@@ -458,18 +369,13 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
             if (step != 0 || s != NUM_PROC - 3) {
                 shift_right(rank, buf[i], tmpBuf);
             } else {
-                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[1]->owner);
                 compute_interactions(buf[1], buf[1], buf[1], rank);
-                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[2]->owner);
                 compute_interactions(buf[1], buf[1], buf[2], rank);
-                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[0]->owner, buf[2]->owner);
                 compute_interactions(buf[0], buf[0], buf[2], rank);
             }
             if (s == NUM_PROC - 3) {
-                // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[1]->owner);
                 compute_interactions(buf[0], buf[1], buf[1], rank);
             }
-            // fprintf(stderr, "\tcomputing: (%d, %d, %d)\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
         i = (i + 1) % 3;
@@ -478,7 +384,6 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
         i = i == 0 ? 2 : i - 1; // prv(i, 3)
         shift_right(rank, buf[i], tmpBuf);
         if (rank / (NUM_PROC / 3) == 0) {
-            printf("\tcomputing: (%d, %d, %d)\n", buf[1]->owner, buf[1]->owner, buf[1]->owner);
             compute_interactions(buf[0], buf[1], buf[2], rank);
         }
     }
@@ -486,17 +391,14 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
 
     // all interactions have been computed, now send results to root node
 
-    size_t dataSize = 3 * MAX_BUF_SIZE * NUM_PROC;    
+    size_t dataSize = 3 * MAX_BUF_SIZE * NUM_PROC;
     char *gatherBuf = rank == ROOT_NODE ? (char*) malloc(dataSize) : NULL;
 
-    // printf("rank %d: wysylam (%d, %d, %d)\n", rank, buf[0]->owner, buf[1]->owner, buf[2]->owner);
-    
     MPI_Gather(buf[0], MAX_BUF_SIZE, MPI_CHAR, gatherBuf,                               MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
     MPI_Gather(buf[1], MAX_BUF_SIZE, MPI_CHAR, gatherBuf + NUM_PROC * MAX_BUF_SIZE,     MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
     MPI_Gather(buf[2], MAX_BUF_SIZE, MPI_CHAR, gatherBuf + NUM_PROC * MAX_BUF_SIZE * 2, MAX_BUF_SIZE, MPI_CHAR, ROOT_NODE, ACTIVE_NODES_WORLD);
 
     if (rank == ROOT_NODE) {
-        // printf("UDALO SIE, wypisuje zerowy:\n");
 
         MPI_Request *rs = (MPI_Request *) calloc(3 * NUM_PROC, sizeof(MPI_Request));
         int i = 0, j = 0;
@@ -510,7 +412,6 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
                 j++;
             } else {
                 BUF_ISEND(tmp, BUF_SIZE(tmp), tmp->owner, &rs[i]);
-                // printf("recv owner: %d, num: %d\n", tmp->owner, tmp->particlesNum);
                 i++;
             }
         }
@@ -529,8 +430,6 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
         INIT_BUF(buf[0]);
         INIT_BUF(buf[1]);
         INIT_BUF(buf[2]);
-
-        // printf("ALOHA! UDALO SIE ALL ODEBRAC! %d %d %d\n", buf[0]->owner, buf[1]->owner, buf[2]->owner);
     }
 
     // here each node got 3 copies of it's buffer
