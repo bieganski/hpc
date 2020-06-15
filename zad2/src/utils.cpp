@@ -81,6 +81,14 @@ void handle_redundant_nodes(int myRank) {
     }
 }
 
+int compute_color(int myRank) {
+    int res = myRank + 1 > N ? MPI_UNDEFINED : 123;
+    if (MOD3(N) && myRank == N - 1) {
+        return MPI_UNDEFINED;
+    }
+    return res;
+}
+
 std::vector<MsgBuf*> parse_input(std::ifstream content) {
     std::stringstream ss;
     ss << content.rdbuf();

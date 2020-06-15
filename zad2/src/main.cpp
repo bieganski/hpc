@@ -48,7 +48,7 @@ int main(int argc, char **argv) {
 
     // Some nodes may not be used, if there is not enough data for everyone.
     // At the same time, we want to use collectives (i.a. MPI_Gather), thus create new world
-    int color = myRank + 1 > N ? MPI_UNDEFINED : 123;
+    int color = compute_color(myRank);
     int res = MPI_Comm_split(MPI_COMM_WORLD, color, myRank, &ACTIVE_NODES_WORLD);
     assert(res == MPI_SUCCESS);
     handle_redundant_nodes(myRank);
