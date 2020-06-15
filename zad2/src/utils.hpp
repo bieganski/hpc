@@ -23,11 +23,15 @@ extern int NUM_PROC;
 #define NEXT(rank) (rank + 1) % NUM_PROC
 #define PREV(rank) (rank == 0 ? NUM_PROC - 1 : rank - 1)
 
+#define MOD3(num) (num % 3 == 0)
+
 int parse_args(int argc, char **argv);
 
 std::ifstream get_input_content();
 
 std::vector<MsgBuf*> parse_input(std::ifstream content);
+
+void handle_redundant_nodes(int myRank);
 
 // inclusive
 inline size_t MIN_PART_IDX(int rank) {

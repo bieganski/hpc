@@ -67,9 +67,23 @@ std::ifstream get_input_content() {
     }
 }
 
+void handle_redundant_nodes(int myRank) {
+    if (NUM_PROC > N) {
+        NUM_PROC = N;
+    }
+    if (myRank >= NUM_PROC || ((MOD3(NUM_PROC) && myRank == NUM_PROC - 1))) {
+        // i'm redundant
+        MPI_Finalize();
+        exit(0);
+    }
+    if (MOD3(NUM_PROC)) {
+        NUM_PROC -= 1;
+    }
+}
+
 std::vector<MsgBuf*> parse_input(std::ifstream content) {
     std::stringstream ss;
-    ss << content.rdbuf();    
+    ss << content.rdbuf();
     content.close();
     std::string line;
     std::stringstream tmp_ss;

@@ -23,16 +23,6 @@ double DELTA_TIME;
 size_t N;
 int NUM_PROC;
 
-void handle_redundant_nodes(int myRank) {
-    if (myRank >= N) {
-        // i'm redundant
-        MPI_Finalize();
-        exit(0);
-    } else if (NUM_PROC > N) {
-        NUM_PROC = N;
-    }
-}
-
 MPI_Comm ACTIVE_NODES_WORLD;
 
 int main(int argc, char **argv) {
@@ -61,12 +51,11 @@ int main(int argc, char **argv) {
     int color = myRank + 1 > N ? MPI_UNDEFINED : 123;
     int res = MPI_Comm_split(MPI_COMM_WORLD, color, myRank, &ACTIVE_NODES_WORLD);
     assert(res == MPI_SUCCESS);
-
     handle_redundant_nodes(myRank);
+
 
     myBuf = distribute_bufs(bufs, myRank);
     assert(bufs.empty());
-
 
     // here all the nodes got their particles subset in memory.
     // first algorithm run updates only acceleration ('first_iter' true)
