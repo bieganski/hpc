@@ -8,7 +8,6 @@
 #include "utils.hpp"
 #include "body.hpp"
 
-
 extern MPI_Comm ACTIVE_NODES_WORLD;
 
 extern double DELTA_TIME;
