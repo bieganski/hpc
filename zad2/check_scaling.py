@@ -50,7 +50,13 @@ def run(n,s,d):
 
 
 def all():
+    print("### STRONG")
     for n,s,d in TESTS_STRONG:
+        print(cmd(n,s,d))
+        time = run(n,s,d)
+        print(time)
+    print("### WEAK")
+    for n,s,d in TESTS_WEAK:
         print(cmd(n,s,d))
         time = run(n,s,d)
         print(time)
