@@ -3,7 +3,7 @@
 
 const double DERIV_EPS = 4.69041575982343e-08;
 const double MASS = 1.0;
-constexpr double ZERO_EPS = std::pow(10, -10);
+double ZERO_EPS = std::pow(10, -10);
 const double E0 = 1.0;
 
 
