@@ -80,9 +80,9 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (myRank == ROOT_NODE) {
+    if (myRank == ROOT_NODE && !VERBOSE) {
         std::string out(FILE_PATH_OUT);
-        out.append("_stepcount.txt");
+        out.append("_" + std::to_string(STEP_COUNT) + ".txt");
         dump_results(gatherBuf, dataSize, out);
     }
     
