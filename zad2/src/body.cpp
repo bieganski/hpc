@@ -381,7 +381,7 @@ void body_algo(int rank, MsgBuf* b1, bool first_iter) {
         i = (i + 1) % 3;
     }
     if (NUM_PROC % 3 == 0) {
-        i = i == 0 ? 2 : i - 1; // prv(i, 3)
+        i = i == 0 ? 2 : (i - 1); // prv(i, 3)
         shift_right(rank, buf[i], tmpBuf);
         if (rank / (NUM_PROC / 3) == 0) {
             compute_interactions(buf[0], buf[1], buf[2], rank);
