@@ -105,7 +105,6 @@ int main(int argc, char **argv) {
         if (myRank == ROOT_NODE && VERBOSE) {
             std::string out(FILE_PATH_OUT);
             out.append("_" + std::to_string(i + 1) + ".txt");
-            std::cout << "AAA: " << out << "\n";
             dump_results(gatherBuf, dataSize, out);
         }
     }
