@@ -121,7 +121,7 @@ std::vector<MsgBuf*> parse_input(std::ifstream content) {
         buf->owner = i;
         buf->particlesNum = particlesNum;
 
-        fprintf(stderr, "parse input: rank %d -> [%d, %d)\n", i, minIdxIncl, maxIdxExcl);
+        // fprintf(stderr, "parse input: rank %d -> [%d, %d)\n", i, minIdxIncl, maxIdxExcl);
         
         INIT_BUF(buf);
         
