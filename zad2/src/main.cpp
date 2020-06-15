@@ -101,6 +101,12 @@ int main(int argc, char **argv) {
         
         // after all phase, each thread's result is in it's 'myBuf', need to gather them
         bufs = collect_results(myBuf, gatherBuf, dataSize, myRank);
+
+        if (VERBOSE) {
+            std::string out(FILE_PATH_OUT);
+            out.append("_" + std::to_string(i) + ".txt");
+            dump_results(gatherBuf, dataSize, out);
+        }
     }
 
     if (myRank == ROOT_NODE) {
