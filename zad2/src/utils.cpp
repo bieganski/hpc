@@ -85,7 +85,7 @@ int compute_color(int myRank) {
     if (N <= NUM_PROC)
         return 123;
     int res = myRank + 1 > N ? MPI_UNDEFINED : 123;
-    if (MOD3(N) && myRank == N - 1) {
+    if (MOD3(NUM_PROC) && myRank == N - 1) {
         printf("%d -> %d\n", myRank, MPI_UNDEFINED);
         return MPI_UNDEFINED;
     }
