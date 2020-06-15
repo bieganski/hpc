@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.10)
-project(mpi-3body)
+project(body)
 set(CMAKE_CXX_STANDARD 14)
 
-set(SOURCE_FILES main.cpp utils.cpp body.cpp)
+set(SOURCE_FILES src/main.cpp src/utils.cpp src/body.cpp)
 
 add_executable(body3 ${SOURCE_FILES})
 
