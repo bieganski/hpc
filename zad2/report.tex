@@ -1,0 +1,185 @@
+\documentclass[12pt]{article}
+% We can write notes using the percent symbol!
+% The first line above is to announce we are beginning a document, an article in this case, and we want the default font size to be 12pt
+\usepackage[utf8]{inputenc}
+% This is a package to accept utf8 input.  I normally do not use it in my documents, but it was here by default in Overleaf.
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+% These three packages are from the American Mathematical Society and includes all of the important symbols and operations 
+\usepackage{fullpage}
+% By default, an article has some vary large margins to fit the smaller page format.  This allows us to use more standard margins.
+
+\usepackage{listings}
+\usepackage{xcolor}
+\newcommand{\code}[1]{\texttt{#1}}
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.96}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2
+}
+\lstset{style=mystyle}
+
+% \setlength{\parskip}{0em}
+
+% \setlength{\parindent}{10pt}
+
+
+\begin{document}
+% Once we have all of our packages and setting announced, we need to begin our document.  You will notice that at the end of the writing there is an end document statements.  Many options use this begin and end syntax.
+
+\author{Mateusz Biegański}
+\title{Louvain community detection - report}
+\maketitle
+
+\begin{center}
+    \Large Louvain community detection - report \normalsize
+\end{center}
+
+\begin{abstract}
+    \par I present my implementation of parallel Molecular simulation with three-body interactions, according to Penporn Koanantakool, Katherine Yelick paper \textbf{A Computation- and Communication-Optimal Parallel Direct 3-Body Algorithm} (2015).
+\end{abstract}
+
+
+\section*{\fontsize{18}{18}\selectfont Implementation}
+
+In my implementation I am using MPI 3.0 protocol, including asynchronous Isend()/Irecv() operations and collecive ones (like MPI$\_$Gather()). I am using several C++ features like references, but whole code can be easily rewritten to pure C99 standard. In case of $NUM\_PROC > N$ only $N$ nodes are used (new MPI group is created with only active nodes colored), rest finalizes and exits.
+
+\section*{\fontsize{18}{18}\selectfont Quality tests}
+My implementation generates proper results against $part\_4.txt$ and $partg\_5.txt$ given examples.
+
+\section*{\fontsize{18}{18}\selectfont Numerical intensity}
+
+All computations are performed using \textbf{double} datatype, $sizeof(double) == 8$ holds.
+Let's assume that we are computing one iteration of simulation: we need to compute $a)$ new positions, $b)$ forces, $c)$ accelerations, $d)$ velocities.
+
+\subsection*{a) new positions}
+
+for each particle we compute new x,y,z coordinates using equation:
+
+$x(t + \Delta t) := x + v_x t + 0.5*a_x \Delta t$,\\
+which adds 3 FLOPs per 3 reads and 1 write (I assume delta time in cache). per direction (summarly \textbf{9 FLOPS per 96 bytes} per each particle).
+
+\subsection*{b) forces}
+For each triple we need to compute numerical difference quotient exactly 18 times to compute all potentials (3 triples * 3 directions * 2 (+/-)). Each time we also need to recompute distances in triple, because they differ. I assume \textit{sqrt} function complexity equals 10 FLOPS (it's highly architecture-dependent). During whole computation I assume that all particles' positions are in cache, after being loaded from memory once (it's 3 * 3 * 8 for on read and same for one write = \textbf{144 bytes} in total) for each triple.
+
+Single DISTANCE computation consumes 10 + 9 = 19 FLOPS a 
+\begin{lstlisting}[language=C]
+   #define DISTANCE (std::sqrt((p2x - p0x) * (p2x - p0x) + \
+                            (p2y - p0y) * (p2y - p0y) + \
+                            (p2z - p0z) * (p2z - p0z)))
+\end{lstlisting}
+and 3*1 FLOPS for normalization.
+Thus we got 60 FLOPS for distances calculation (remark that positions are in cache).
+
+Once we computed distances, we are able to calculate potential (V). Let's consider code snippet below:
+\begin{lstlisting}[language=C]
+double three = rij * rik * rkj;
+double rij2 = rij * rij;
+double rik2 = rik * rik;
+double rkj2 = rkj * rkj;
+    
+res = 1.0 / std::pow(three, 3);
+res += 3.0 * ((-rij2 + rik2 + rkj2) * (rij2 - rik2 + rkj2) * (rij2 + rik2 - rkj2)) / (8.0 * std::pow(three, 5));
+res *= E0;
+return res;
+\end{lstlisting}
+Assuming FLOPS(std::pow($\_$, n) == n) summarly we got 27 FLOPS per single V computation.
+
+Both distance and V computation for each triple consists of 18 calls (on same in-cache coordinates), thus we got 18 * (60 + 27) = \textbf{1566 FLOPS per 144 bytes.}
+
+\subsection*{c) accelerations}
+
+Each acceleration value is computed using corresponding force like below, which implies 3 * 2 FLOPS per 3 * (1 read + 1 write) =  \textbf{6 FLOPS per 48 bytes} for each particle (assuming MASS in cache).
+\begin{lstlisting}[language=C]
+ax = -FX(b1, i) / MASS;
+ay = -FY(b1, i) / MASS;
+az = -FZ(b1, i) / MASS;
+\end{lstlisting}
+
+\subsection*{d) velocities}
+
+Assuming 0.5 * DELTATIME in cache, computation for one particle takes 3 * 3 FLOPS per 3 * (2 reads + 1 write) (new values for acceleration are in cache (were computed just before, in \code{void compute$\_$acc$\_$maybe$\_$vel()} function. Result is \textbf{9 FLOPS per 72 bytes} for each particle.
+
+\begin{lstlisting}[language=C]
+vx = oldvx + 0.5 * DELTA_TIME * (newax + oldax);
+vy = oldvy + 0.5 * DELTA_TIME * (neway + olday);
+vz = oldvz + 0.5 * DELTA_TIME * (newaz + oldaz);
+\end{lstlisting}
+
+\subsection*{Summary}
+As we can see above, \textbf{computing forces is dominant}. Furthermore, only forces calculation is per number of triples, not per number of particles like velocity or acceleration. It is 1566 FLOPS per 72 bytes for each triple. There are exactly $\binom{N}{3} = O(N^3)$ triples, thus total intensity is about $20\cdot N^2$ FLOPS/byte, where $N =$ number of particles.
+
+
+\section*{\fontsize{18}{18}\selectfont Speedups measuring}
+
+In this section I present times that my solution obtained. Python sequential solution was too slow for speedups measuring, and parallel code works with at least 4 nodes, thus I assumed that fastest sequential code would have worked with $T_{seq} = T_4 \cdot 2$, which is even too safe and realistic assumption.
+
+\subsection*{Strong scaling}
+
+Strong scaling was computed using \textbf{tests/test$\_$100.txt} file and constant work (\code{stepcount = 40})
+\begin{center}
+\begin{tabular}{ |c c c c c c| }
+ \hline
+ \textbf{INPUT NAME} & \textbf{PARTICLES} & \textbf{NODES} & \textbf{STEPS} & \textbf{TIME [s]} & \textbf{SPEEDUP} &
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 1 & 40 & 19.36 & 1.0 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 4 & 40 & 9.68 & 2.0 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 8 & 40 & 5.23 & 3.72 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 16 & 40 & 2.95 & 6.56 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 32 & 40 & 2.16 & 8.96 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 64 & 40 & 6.53 & 2.96 \\
+ \hline
+\end{tabular}
+\end{center}
+
+
+
+\subsection*{Weak scaling}
+
+\begin{center}
+\begin{tabular}{ |c c c c c c| }
+ \hline
+ \textbf{INPUT NAME} & \textbf{PARTICLES} & \textbf{NODES} & \textbf{STEPS} & \textbf{TIME [s]} & \textbf{SPEEDUP} &
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 1 & 8 & 19.36 & 1.0 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 4 & 40 & 9.68 & 2.0 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 8 & 40 & 5.23 & 3.72 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 16 & 40 & 2.95 & 6.56 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 32 & 40 & 2.16 & 8.96 \\
+ \hline
+ \textbf{test$\_$100.txt} & 100 & 64 & 40 & 6.53 & 2.96 \\
+ \hline
+\end{tabular}
+\end{center}
+
+
+\end{document}
+
