@@ -53,6 +53,7 @@ int main(int argc, char **argv) {
     assert(res == MPI_SUCCESS);
     handle_redundant_nodes(myRank);
 
+    printf("aaa\n");
 
     myBuf = distribute_bufs(bufs, myRank);
     assert(bufs.empty());
