@@ -1,19 +1,15 @@
 SRC_DIR := src
-SRC_FILES := $(shell ls -1)
 OBJ_DIR := build
 OBJ_FILES := $(shell ls src/*.cpp | sed -e "s/.cpp/.o/g" | sed -e "s~$(SRC_DIR)/~$(OBJ_DIR)/~g")
 
 CXX := mpic++
-CXXFLAGS := -g -Wmaybe-uninitialized -O3 
-# -Wall -pedantic
-# -Wall -pedantic
-# LDFLAGS :=
+CXXFLAGS := -g -Wmaybe-uninitialized -O3
 
 IGNORE := $(shell mkdir -p $(OBJ_DIR))
 
-all: main
+all: body3
 
-main: $(OBJ_FILES)
+body3: $(OBJ_FILES)
 	mkdir -p $(OBJ_DIR)
 	$(CXX) $(LDFLAGS) -o $@ $^
 
