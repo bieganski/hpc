@@ -33,7 +33,7 @@ std::vector<MsgBuf*> parse_input(std::ifstream content);
 
 void handle_redundant_nodes(int myRank);
 
-int compute_color(int myRank)
+int compute_color(int myRank);
 
 // inclusive
 inline size_t MIN_PART_IDX(int rank) {
