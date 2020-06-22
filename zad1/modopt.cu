@@ -339,9 +339,9 @@ void reassign_huge_nodes(
         if (gain > 0 && commIdxBest < comm[i]) {
             assert(commIdxBest > 0);
             newComm[i] = commIdxBest;
-            printf("~~~~~~~~~~~~~~~~ *%u: wywalam do communiy %u, bo gain %f\n", i, commIdxBest, gain);
+            // printf("~~~~~~~~~~~~~~~~ *%u: wywalam do communiy %u, bo gain %f\n", i, commIdxBest, gain);
         } else {
-            printf("~~~~~~~~~~~~~~~~ *%u: nie wywalam, zostaje %u, bo gain %f\n", i, comm[i], gain);
+            // printf("~~~~~~~~~~~~~~~~ *%u: nie wywalam, zostaje %u, bo gain %f\n", i, comm[i], gain);
             newComm[i] = comm[i];
         }
     }
