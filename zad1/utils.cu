@@ -236,9 +236,9 @@ void updateSpecific(
     }
     
     uint32_t i = indices[tid];
-    if (from[i] == 0)
-        printf("updateSpecific idx=%d, newComm[idx]=%d, it's deg: %d\n", i, from[i], V[i+1] - V[i]);
-    // assert(from[i] != 0);
+    // if (from[i] == 0)
+    printf("updateSpecific idx=%d, newComm[idx]=%d, it's deg: %d\n", i, from[i], V[i+1] - V[i]);
+    assert(from[i] != 0);
     to[i] = from[i];
 }
 
@@ -275,9 +275,14 @@ void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict_
     for (int i = 1; i <= V_MAX_IDX; i++) {
         printf("%d", idx);
         idx++;
-        for (int j = 0; j < v[i].size(); j++) {
-            printf(" %d", v[i][j]);
+        auto it = v[i].begin();
+        while (it != v[i].end()) {
+            printf(" %d", *it);
+            it++;
         }
+        // for (int j = 0; j < v[i].size(); j++) {
+        //     printf(" %d", v[i][j]);
+        // }
         // PRINT(v[i].begin(), v[i].end());
         printf("\n");
     }
