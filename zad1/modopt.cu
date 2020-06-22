@@ -507,9 +507,9 @@ void reassign_nodes(
         if (gain > 0 && newCommIdx < comm[i]) {
             assert(newCommIdx != 0);
             newComm[i] = newCommIdx;
-            printf("~~~~~~~~~~~~~~~~(%d, %d) *%u: wywalam do communiy %u, bo gain %f\n", i_ptr, getGlobalIdx(), i, newCommIdx, gain);
+            // printf("~~~~~~~~~~~~~~~~(%d, %d) *%u: wywalam do communiy %u, bo gain %f\n", i_ptr, getGlobalIdx(), i, newCommIdx, gain);
         } else {
-            printf("~~~~~~~~~~~~~~~~(%d, %d) *%u: nie wywalam, zostaje %u, bo gain %f\n", i_ptr, getGlobalIdx(), i, comm[i], gain);
+            // printf("~~~~~~~~~~~~~~~~(%d, %d) *%u: nie wywalam, zostaje %u, bo gain %f\n", i_ptr, getGlobalIdx(), i, comm[i], gain);
             newComm[i] = comm[i];
         }
     }
