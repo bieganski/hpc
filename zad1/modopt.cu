@@ -529,6 +529,9 @@ float reassign_communities_bin(
                         uint32_t maxDegree,
                         const float m) {
 
+    if (maxDegree > 1024)
+        maxDegree = 1024;
+
     // TODO customize this, maybe check 2 * maxDegree?
     uint32_t hashArrayEntriesPerComm;
 
@@ -545,8 +548,7 @@ float reassign_communities_bin(
     }
     dim3 dim(maxDegree, threadsY);
     
-    if (maxDegree > 1024)
-        maxDegree = 1024;
+    
     if (maxDegree == 1024 || maxDegree == UINT32_MAX) {
         hashArrayEntriesPerComm = next_2_pow(4096);
         
