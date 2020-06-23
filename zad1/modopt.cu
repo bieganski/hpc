@@ -354,7 +354,7 @@ void reassign_huge_nodes(
             assert(comm[i] != 0);
             newComm[i] = comm[i];
         }
-        numChanged++;
+        atomicAdd(&numChanged, 1);
     }
     if (maxDegree >= 1024) {
         __syncthreads();
