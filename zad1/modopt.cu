@@ -247,7 +247,7 @@ void reassign_huge_nodes(
             break;
         }
         if (maxDegree <= 1024) {
-            printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
+            // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
             assert(cntr == 0); // only one iteration needed
         } else {
             assert(stride == 1024);
