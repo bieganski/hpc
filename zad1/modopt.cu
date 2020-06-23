@@ -542,7 +542,7 @@ float reassign_communities_bin(
     assert(sizeof(KeyValueFloat) == sizeof(KeyValueInt));
 
     uint32_t threadsX = maxDegree;
-    uint32_t maxThreadsY = 1024 / threadsX;
+    uint32_t maxThreadsY = 1024 / min(threadsX, 1024);
     uint32_t threadsY = min(maxThreadsY, binNodesNum);
     uint32_t blockNum = ceil( (float)binNodesNum / threadsY );
 
