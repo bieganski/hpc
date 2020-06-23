@@ -345,6 +345,7 @@ void reassign_huge_nodes(
             assert(commIdxBest > 0);
             newComm[i] = commIdxBest;
         } else {
+            assert(comm[i] != 0);
             newComm[i] = comm[i];
         }
     }
