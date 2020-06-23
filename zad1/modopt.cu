@@ -170,11 +170,11 @@ void reassign_huge_nodes(
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
 
-    if (i_ptr + edge_ptr == 0)
-        numChanged = 0;
-
     int i_ptr = threadIdx.y + blockIdx.x * blockDim.y; // my vertex pointer
     int edge_ptr = threadIdx.x; // my edge pointer
+
+    if (i_ptr + edge_ptr == 0)
+        numChanged = 0;
 
     assert(edge_ptr < maxDegree);
 
