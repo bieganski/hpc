@@ -256,7 +256,7 @@ void reassign_huge_nodes(
             // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
             assert(cntr == 0); // only one iteration needed
         } else {
-            assert(stride == 1024);
+            ; // assert(stride == 1024);
         }
 
         uint32_t j = E[V[i] + EDGE]; // my neighbor
@@ -584,6 +584,8 @@ float reassign_communities_bin(
 
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
         assert(shmBytes <= SHARED_MEM_SIZE);
+
+        stride = 32;
 
         printf("MODOPT GLOBAL: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
     
