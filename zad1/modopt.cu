@@ -235,6 +235,7 @@ void reassign_huge_nodes(
 
     uint64_t deltaMod;
     float ei_to_Ci;
+    uint64_t* glob_deltaMod;
 
     // TODO synce
     while (true) {
@@ -292,7 +293,7 @@ void reassign_huge_nodes(
         // of pair (int(deltaMod), -newCommIdx). We implement it using concatenation
         // of two unsigned values (obtained by order-preserving bijection from floats).
         uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(float);
-        uint64_t* glob_deltaMod = (uint64_t*) &shared_mem[deltaMod_off_bytes];
+        glob_deltaMod = (uint64_t*) &shared_mem[deltaMod_off_bytes];
         assert(newCommIdx != UINT32_MAX);
         assert(newCommIdx != 0);
         uint32_t newCommIdxRepr = -1 - newCommIdx; // bits flipped
