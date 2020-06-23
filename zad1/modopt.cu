@@ -758,8 +758,8 @@ float reassign_communities(
         // OK, we computed new communities for all bins, let's check whether
         // modularity gain is satisfying
 
-        printf("*****************                 ASSIGNMENT      ****************\n");
-        print_comm_assignment(V_MAX_IDX, comm);
+        // printf("*****************                 ASSIGNMENT      ****************\n");
+        // print_comm_assignment(V_MAX_IDX, comm);
 
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
 
