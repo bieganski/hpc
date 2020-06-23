@@ -218,8 +218,8 @@ void reassign_huge_nodes(
     }
     int i = binNodes[i_ptr]; // my vertex
 
-    int cntr = 0;
-    uint32_t edge_base = edge_ptr;
+    
+    
 
     // variables common for each vertex, accumulating ei_to_Ci value 
     // computed in parallel
@@ -237,6 +237,8 @@ void reassign_huge_nodes(
     float ei_to_Ci;
     uint64_t* glob_deltaMod;
 
+    int cntr = 0;
+    uint32_t edge_base = edge_ptr;
     // TODO synce
     while (true) {
 
@@ -245,6 +247,7 @@ void reassign_huge_nodes(
             break;
         }
         if (maxDegree <= 1024) {
+            printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
             assert(cntr == 0); // only one iteration needed
         } else {
             assert(stride == 1024);
@@ -552,7 +555,7 @@ float reassign_communities_bin(
     
     int stride = maxDegree > 1024 ? 1024 : -1;
 
-    if (maxDegree >= 1024) {
+    if (maxDegree >= 1024) { // use global memory for hasharrays
 
         hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
         
@@ -571,7 +574,9 @@ float reassign_communities_bin(
 
         cudaDeviceSynchronize();
         HANDLE_ERROR(cudaFreeHost(globalHashArrays));
-    } else {
+
+    } else { // use shared memory for hasharrays
+
         hashArrayEntriesPerComm = next_2_pow(maxDegree); // TODO koniecznie sprawdzic +1
 
         if (maxDegree <= WARP_SIZE) {
