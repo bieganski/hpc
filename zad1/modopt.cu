@@ -532,7 +532,7 @@ float reassign_communities_bin(
                         uint32_t maxDegree,
                         const float m) {
 
-    if (maxDegree >= 9999) {
+    if (maxDegree > 10001) {
         assert(false);
     }
 
