@@ -577,15 +577,21 @@ float reassign_communities_bin(
 
         hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
         
+
+        // TODO to chyba niezalezne od ponizszych
         float* globalHashArrays;
         HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm), cudaHostAllocDefault));
         std::memset(globalHashArrays, '\0', sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm));
         HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrays, globalHashArrays, 0));
 
+        stride = 32;
+        threadsX = 32;
+        maxThreadsY = 1024 / 32;
+        threadsY = min(maxThreadsY, binNodesNum);
+        blockNum = ceil( (float)binNodesNum / threadsY );
+
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
         assert(shmBytes <= SHARED_MEM_SIZE);
-
-        stride = 32;
 
         printf("MODOPT GLOBAL: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
     
