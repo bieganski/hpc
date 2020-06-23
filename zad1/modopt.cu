@@ -250,20 +250,20 @@ void reassign_huge_nodes(
             assert(stride == 1024);
         }
 
-        uint32_t j = E[V[i] + edge_ptr]; // my neighbor
+        uint32_t j = E[V[i] + EDGE]; // my neighbor
         if (comm[j] == 0) {
             printf("DUPA: i=%d, j=%d", i, j);
         }
 
         uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
-        float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + edge_ptr]);
+        float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
 
         // if (i == 2) {
-        //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + edge_ptr], j, mySlot, comm[j]);
+        //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
         // }
 
 
-        float loop = i == j ? W[V[i] + edge_ptr] : 0;
+        float loop = i == j ? W[V[i] + EDGE] : 0;
         ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
 
         atomicMax(glob_loop, float_to_int(loop));
@@ -271,13 +271,13 @@ void reassign_huge_nodes(
 
         __syncthreads();
 
-        if (edge_ptr == 0) {
+        if (EDGE == 0) {
             loop = int_to_float(*glob_loop);
             ei_to_Ci = int_to_float(*glob_ei_to_Ci);
             // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
         }
 
-        if (edge_ptr == 0) {
+        if (EDGE == 0) {
             ei_to_Ci -= loop;
         }
 
@@ -327,7 +327,7 @@ void reassign_huge_nodes(
         cntr++;
     }
 
-    if (edge_ptr == 0) {
+    if (edge_base == 0) {
         // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
         // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
         float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
