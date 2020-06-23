@@ -200,7 +200,7 @@ void reassign_huge_nodes(
 
 
     uint64_t* __tmp = (uint64_t*) shared_mem;
-    for (int i =0; i < COMMON_VARS_SIZE_BYTES / 8; i++) {
+    for (int i =0; i < 1 + COMMON_VARS_SIZE_BYTES / 8; i++) {
         __tmp[i] = 0;
     }
 
@@ -545,6 +545,8 @@ float reassign_communities_bin(
     }
     dim3 dim(maxDegree, threadsY);
     
+    if (maxDegree > 1024)
+        maxDegree = 1024;
     if (maxDegree == 1024 || maxDegree == UINT32_MAX) {
         hashArrayEntriesPerComm = next_2_pow(4096);
         
