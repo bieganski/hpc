@@ -46,6 +46,7 @@ __device__ uint32_t BINS[] =
         96,
         320,
         1024,
+        10000,
         UINT32_MAX // hash arrays in global memory
     };
 
@@ -232,6 +233,9 @@ void reassign_huge_nodes(
 
     __syncthreads();
 
+    uint64_t deltaMod;
+    float ei_to_Ci;
+
     // TODO synce
     while (true) {
 
@@ -259,7 +263,7 @@ void reassign_huge_nodes(
 
 
         float loop = i == j ? W[V[i] + edge_ptr] : 0;
-        float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+        ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
 
         atomicMax(glob_loop, float_to_int(loop));
         atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
@@ -308,7 +312,7 @@ void reassign_huge_nodes(
 
         // LOL
         // uint64_t deltaMod = (((uint64_t) int_to_uint(float_to_int(deltaModRaw))) << 31) + newCommIdxRepr;
-        uint64_t deltaMod = (((uint64_t) float_to_uint(deltaModRaw)) << 31) | newCommIdxRepr;
+        deltaMod = (((uint64_t) float_to_uint(deltaModRaw)) << 31) | newCommIdxRepr;
 
         assert((uint32_t)deltaMod != 0);
 
@@ -524,6 +528,10 @@ float reassign_communities_bin(
                         uint32_t maxDegree,
                         const float m) {
 
+    if (maxDegree >= 9999) {
+        assert(false);
+    }
+
     // TODO customize this, maybe check 2 * maxDegree?
     uint32_t hashArrayEntriesPerComm;
 
@@ -541,10 +549,11 @@ float reassign_communities_bin(
     dim3 dim(maxDegree, threadsY);
     
     
-    if (maxDegree == 1024 || maxDegree == UINT32_MAX) {
-        int stride = maxDegree > 1024 ? 1024 : -1;
+    int stride = maxDegree > 1024 ? 1024 : -1;
 
-        hashArrayEntriesPerComm = next_2_pow(4096);
+    if (maxDegree >= 1024) {
+
+        hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
         
         float* globalHashArrays;
         HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm), cudaHostAllocDefault));
@@ -577,7 +586,7 @@ float reassign_communities_bin(
 
             printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
             reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
-                V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, nullptr);
+                V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, nullptr, stride);
         }
     }
     return 21.37;
