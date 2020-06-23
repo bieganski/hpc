@@ -526,7 +526,7 @@ float reassign_communities_bin(
                         const float*    __restrict__ ac,
                         uint32_t* __restrict__ comm,
                         uint32_t* __restrict__ newComm,
-                        const uint32_t maxDegree,
+                        uint32_t maxDegree,
                         const float m) {
 
     // TODO customize this, maybe check 2 * maxDegree?
