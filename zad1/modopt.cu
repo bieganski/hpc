@@ -358,7 +358,11 @@ void reassign_huge_nodes(
     }
     if (maxDegree >= 1024) {
         __syncthreads();
-        assert(numChanged == numNodes);
+        if (numChanged != numNodes) {
+            printf("numChanged == numNodes, %d, %d\n", numChanged, numNodes);
+            assert(numChanged == numNodes);
+        }
+        
     }
     
 }
