@@ -357,7 +357,8 @@ void reassign_huge_nodes(
         atomicAdd(&numChanged, 1);
     }
     if (maxDegree >= 1024) {
-        __syncthreads();
+        cudaDeviceSynchronize();
+        // __syncthreads();
         if (numChanged != numNodes) {
             printf("numChanged == numNodes, %d, %d\n", numChanged, numNodes);
             // assert(numChanged == numNodes);
