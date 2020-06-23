@@ -553,7 +553,7 @@ float reassign_communities_bin(
     dim3 dim(maxDegree, threadsY);
     
     
-    int stride = maxDegree > 1024 ? 1024 : -1;
+    int stride = 1024;
 
     if (maxDegree >= 1024) { // use global memory for hasharrays
 
