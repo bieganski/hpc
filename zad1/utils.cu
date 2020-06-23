@@ -236,9 +236,9 @@ void updateSpecific(
     }
     
     uint32_t i = indices[tid];
-    if (from[i] == 0)
-        printf("updateSpecific idx=%d, newComm[idx]=%d, it's deg: %d\n", i, from[i], V[i+1] - V[i]);
-    // assert(from[i] != 0);
+    // if (from[i] == 0)
+    //     printf("updateSpecific idx=%d, newComm[idx]=%d, it's deg: %d\n", i, from[i], V[i+1] - V[i]);
+    assert(from[i] != 0);
     to[i] = from[i];
 }
 

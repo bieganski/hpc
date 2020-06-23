@@ -142,6 +142,9 @@ uint32_t float_to_uint(float f32_val) {
 
 #define VAR_MEM_PER_VERTEX_BYTES_DEFINE 16
 
+
+__device__ int numChanged = 0;
+
 /**
  * Version of 'reassign_nodes' that handles nodes with degree > 32.
  * It deduces whether total size of hasharrays fits into shared memory,
@@ -166,6 +169,9 @@ void reassign_huge_nodes(
                         const uint32_t stride) {
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
+
+    if (i_ptr + edge_ptr == 0)
+        numChanged = 0;
 
     int i_ptr = threadIdx.y + blockIdx.x * blockDim.y; // my vertex pointer
     int edge_ptr = threadIdx.x; // my edge pointer
@@ -348,7 +354,13 @@ void reassign_huge_nodes(
             assert(comm[i] != 0);
             newComm[i] = comm[i];
         }
+        numChanged++;
     }
+    if (maxDegree >= 1024) {
+        __syncthreads();
+        assert(numChanged == numNodes);
+    }
+    
 }
 
 /**
