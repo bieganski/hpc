@@ -240,17 +240,17 @@ void reassign_huge_nodes(
     // TODO synce
     while (true) {
 
+        uint32_t EDGE = edge_base + cntr * stride;
+        if (V[i + 1] - V[i] -1 < EDGE) {
+            break;
+        }
         if (maxDegree <= 1024) {
             assert(cntr == 0); // only one iteration needed
         } else {
             assert(stride == 1024);
         }
 
-        uint32_t EDGE = edge_base + cntr * stride;
-        if (V[i + 1] - V[i] -1 < EDGE) {
-            break;
-        }
-        uint32_t j = E[V[i] + edge_ptr]; //my neighbor
+        uint32_t j = E[V[i] + edge_ptr]; // my neighbor
         if (comm[j] == 0) {
             printf("DUPA: i=%d, j=%d", i, j);
         }
