@@ -585,7 +585,7 @@ float reassign_communities_bin(
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * threadsY * (2 * hashArrayEntriesPerComm);
             printf("memsize: %d\n", memsize);
-            HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocDefault));
+            HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             std::memset(globalHashArrays, '\0', memsize);
             HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             assert(globalHashArrays != nullptr);
