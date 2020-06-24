@@ -166,7 +166,8 @@ void reassign_huge_nodes(
                         const uint32_t hasharrayEntries, // @@@@@@@ >>>     TODO TODO TODO TODO TODO TODO <<<< @@@@@@@@
                         const float m,
                         const void*    globalHasharray,
-                        const uint32_t stride) {
+                        const uint32_t stride,
+                        const bool useGlobalMem) {
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
 
@@ -192,7 +193,7 @@ void reassign_huge_nodes(
     uint32_t COMMON_VARS_SIZE_BYTES = VAR_MEM_PER_VERTEX_BYTES * nodesPerBlock;
 
     // TODO customize this
-    bool shared = globalHasharray == nullptr; // COMMON_VARS_SIZE_BYTES + (2 * hasharrayEntries * sizeof(KeyValueInt)) * numNodes <= SHARED_MEM_SIZE; 
+    bool shared = !useGlobalMem; // COMMON_VARS_SIZE_BYTES + (2 * hasharrayEntries * sizeof(KeyValueInt)) * numNodes <= SHARED_MEM_SIZE; 
 
     // very careful pointer handling here, because of lots of type mismatches and casting
     if (shared) {
@@ -573,7 +574,7 @@ float reassign_communities_bin(
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
         // bool useGlobalMem = maxDegree >= 1024;
 
-        float* globalHashArrays = nullptr;
+        float *globalHashArrays = nullptr, *deviceGlobalHashArrays;
 
         // it will be increased conditionally later
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
@@ -585,7 +586,7 @@ float reassign_communities_bin(
             size_t memsize = sizeof(KeyValueFloat) * threadsY * (2 * hashArrayEntriesPerComm);
             HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocDefault));
             std::memset(globalHashArrays, '\0', memsize);
-            HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrays, globalHashArrays, 0));
+            HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             assert(globalHashArrays != nullptr);
 
         } else {
@@ -598,7 +599,7 @@ float reassign_communities_bin(
 
         printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
-            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, globalHashArrays, stride);
+            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, useGlobalMem);
 
         cudaDeviceSynchronize();
         if (globalHashArrays != nullptr) {
