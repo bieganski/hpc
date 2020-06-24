@@ -589,7 +589,7 @@ float reassign_communities_bin(
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
-            assert(globalHashArrays != nullptr);
+            // assert(globalHashArrays != nullptr);
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
