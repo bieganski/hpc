@@ -600,6 +600,7 @@ float reassign_communities_bin(
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, globalHashArrays, stride);
 
+        cudaDeviceSynchronize();
         if (globalHashArrays != nullptr) {
             HANDLE_ERROR(cudaFreeHost(globalHashArrays));
         }
