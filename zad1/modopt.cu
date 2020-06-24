@@ -587,7 +587,10 @@ float reassign_communities_bin(
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
-            assert(shmBytes <= SHARED_MEM_SIZE);            
+            if (shmBytes > SHARED_MEM_SIZE) {
+                printf("LOL: %d\n", shmBytes);
+            }
+            // assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
         printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
