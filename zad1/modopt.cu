@@ -585,9 +585,10 @@ float reassign_communities_bin(
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * threadsY * (2 * hashArrayEntriesPerComm);
             printf("memsize: %d\n", memsize);
-            HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
+            HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
+            // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             std::memset(globalHashArrays, '\0', memsize);
-            HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
+            // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             assert(globalHashArrays != nullptr);
 
         } else {
@@ -606,6 +607,9 @@ float reassign_communities_bin(
         // if (globalHashArrays != nullptr) {
         //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
         // }
+        if (useGlobalMem) {
+            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+        }
 
     } else {
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
