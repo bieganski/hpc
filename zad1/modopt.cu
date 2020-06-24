@@ -208,6 +208,8 @@ void reassign_huge_nodes(
         hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
     }
 
+    return;
+
 
     uint64_t* __tmp = (uint64_t*) shared_mem;
     for (int i =0; i < 1 + COMMON_VARS_SIZE_BYTES / 8; i++) {
