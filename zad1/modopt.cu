@@ -603,9 +603,9 @@ float reassign_communities_bin(
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, useGlobalMem);
 
         cudaDeviceSynchronize();
-        if (globalHashArrays != nullptr) {
-            HANDLE_ERROR(cudaFreeHost(globalHashArrays));
-        }
+        // if (globalHashArrays != nullptr) {
+        //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
+        // }
 
     } else {
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
