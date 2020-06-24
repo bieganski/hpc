@@ -551,16 +551,15 @@ float reassign_communities_bin(
                         const float m) {
 
     if (maxDegree > 10001) {
-        assert(false);
+        assert(false); // no support for that huge bins
     }
 
     // TODO customize this, maybe check 2 * maxDegree?
     uint32_t hashArrayEntriesPerComm;
 
-    assert(sizeof(KeyValueFloat) == sizeof(KeyValueInt));
-
-    uint32_t threadsX = maxDegree;
-    uint32_t maxThreadsY = 1024 / min(threadsX, 1024);
+    int stride = 32;
+    uint32_t threadsX = min(maxDegree, 32);
+    uint32_t maxThreadsY = 1024 / threadsX;
     uint32_t threadsY = min(maxThreadsY, binNodesNum);
     uint32_t blockNum = ceil( (float)binNodesNum / threadsY );
 
@@ -568,59 +567,89 @@ float reassign_communities_bin(
     if (blockNum * threadsY < binNodesNum) {
         printf("MOD FAK: binNodesNum: %d , blockNum: %d, threadsY: %d \n", binNodesNum, blockNum, threadsY);
     }
-    dim3 dim(maxDegree, threadsY);
-    
-    
-    int stride = 1024;
+    dim3 dim(threadsX, threadsY);
 
-    if (maxDegree >= 1024) { // use global memory for hasharrays
+    if (maxDegree > 32) {
+        // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
+        bool useGlobalMem = maxDegree >= 1024;
 
-        hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
-        
+        float* globalHashArrays = nullptr;
 
-        // TODO to chyba niezalezne od ponizszych
-        float* globalHashArrays;
-        HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm), cudaHostAllocDefault));
-        std::memset(globalHashArrays, '\0', sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm));
-        HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrays, globalHashArrays, 0));
-
-        stride = 32;
-        threadsX = 32;
-        maxThreadsY = 1024 / 32;
-        threadsY = min(maxThreadsY, binNodesNum);
-        blockNum = ceil( (float)binNodesNum / threadsY );
-
+        // it will be increased conditionally later
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
         assert(shmBytes <= SHARED_MEM_SIZE);
 
-        printf("MODOPT GLOBAL: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
-    
+        if (useGlobalMem) {
+            HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm), cudaHostAllocDefault));
+            std::memset(globalHashArrays, '\0', sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm));
+            HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrays, globalHashArrays, 0));
+            assert(globalHashArrays != nullptr);
+
+        } else {
+            shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
+            assert(shmBytes <= SHARED_MEM_SIZE);            
+        }
+
+        printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, globalHashArrays, stride);
 
-        cudaDeviceSynchronize();
-        HANDLE_ERROR(cudaFreeHost(globalHashArrays));
+    } else {
+        uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
+        assert(shmBytes <= SHARED_MEM_SIZE);
 
-    } else { // use shared memory for hasharrays
-
-        hashArrayEntriesPerComm = next_2_pow(maxDegree); // TODO koniecznie sprawdzic +1
-
-        if (maxDegree <= WARP_SIZE) {
-            uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
-            assert(shmBytes <= SHARED_MEM_SIZE);
-
-            printf("MODOPT: reassign_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
-            reassign_nodes<<<blockNum, dim, shmBytes>>>      (binNodesNum, binNodes, 
-                V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m);
-        } else {
-            uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
-            assert(shmBytes <= SHARED_MEM_SIZE);
-
-            printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
-            reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
-                V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, nullptr, stride);
-        }
+        printf("MODOPT: reassign_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
+        reassign_nodes<<<blockNum, dim, shmBytes>>>      (binNodesNum, binNodes, 
+            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m);
     }
+
+    // if (maxDegree >= 1024) { // use global memory for hasharrays
+
+    //     hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
+        
+
+    //     float* globalHashArrays;
+    //     HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm), cudaHostAllocDefault));
+    //     std::memset(globalHashArrays, '\0', sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm));
+    //     HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrays, globalHashArrays, 0));
+
+    //     stride = 32;
+    //     threadsX = 32;
+    //     maxThreadsY = 1024 / 32;
+    //     threadsY = min(maxThreadsY, binNodesNum);
+    //     blockNum = ceil( (float)binNodesNum / threadsY );
+
+    //     uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
+    //     assert(shmBytes <= SHARED_MEM_SIZE);
+
+    //     printf("MODOPT GLOBAL: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
+    
+    //     reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
+    //         V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, globalHashArrays, stride);
+
+    //     cudaDeviceSynchronize();
+    //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
+
+    // } else { // use shared memory for hasharrays
+
+    //     hashArrayEntriesPerComm = next_2_pow(maxDegree); // TODO koniecznie sprawdzic +1
+
+    //     if (maxDegree <= WARP_SIZE) {
+    //         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
+    //         assert(shmBytes <= SHARED_MEM_SIZE);
+
+    //         printf("MODOPT: reassign_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
+    //         reassign_nodes<<<blockNum, dim, shmBytes>>>      (binNodesNum, binNodes, 
+    //             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m);
+    //     } else {
+    //         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
+    //         assert(shmBytes <= SHARED_MEM_SIZE);
+
+    //         printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
+    //         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
+    //             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, nullptr, stride);
+    //     }
+    // }
     return 21.37;
 }
 
