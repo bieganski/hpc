@@ -178,6 +178,7 @@ void reassign_huge_nodes(
         numChanged = 0;
 
     assert(edge_ptr < maxDegree);
+    assert(i_ptr < maxDegree);
 
     // before any early return, let's utilize all threads for zeroing memory.
 
