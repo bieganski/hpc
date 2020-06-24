@@ -579,6 +579,8 @@ float reassign_communities_bin(
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
         assert(shmBytes <= SHARED_MEM_SIZE);
 
+        bool useGlobalMem = SHARED_MEM_SIZE < shmBytes + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
+
         if (useGlobalMem) {
             HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm), cudaHostAllocDefault));
             std::memset(globalHashArrays, '\0', sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm));
@@ -587,10 +589,10 @@ float reassign_communities_bin(
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
-            if (shmBytes > SHARED_MEM_SIZE) {
-                printf("LOL: %d\n", shmBytes);
-            }
-            // assert(shmBytes <= SHARED_MEM_SIZE);            
+            // if (shmBytes > SHARED_MEM_SIZE) {
+            //     printf("LOL: %d\n", shmBytes);
+            // }
+            assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
         printf("MODOPT: reassign_huge_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
