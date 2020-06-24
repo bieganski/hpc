@@ -571,7 +571,7 @@ float reassign_communities_bin(
 
     if (maxDegree > 32) {
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
-        bool useGlobalMem = maxDegree >= 1024;
+        // bool useGlobalMem = maxDegree >= 1024;
 
         float* globalHashArrays = nullptr;
 
