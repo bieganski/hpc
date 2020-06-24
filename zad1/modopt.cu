@@ -555,7 +555,7 @@ float reassign_communities_bin(
     }
 
     // TODO customize this, maybe check 2 * maxDegree?
-    uint32_t hashArrayEntriesPerComm;
+    uint32_t hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
 
     int stride = 32;
     uint32_t threadsX = min(maxDegree, 32);
