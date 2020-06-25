@@ -165,7 +165,7 @@ void reassign_huge_nodes(
                         const uint32_t nodesPerBlock,
                         const uint32_t hasharrayEntries, // @@@@@@@ >>>     TODO TODO TODO TODO TODO TODO <<<< @@@@@@@@
                         const float m,
-                        const void*    globalHasharray,
+                        const char*    globalHasharray,
                         const uint32_t stride,
                         const bool useGlobalMem) {
 
@@ -182,7 +182,6 @@ void reassign_huge_nodes(
     if (i_ptr >= nodesPerBlock * gridDim.x) {
         printf("i_ptr : %d = %d + %d*%d, nodes: %d\n", i_ptr, threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock * gridDim.x);
     }
-    // return;
 
     // before any early return, let's utilize all threads for zeroing memory.
 
@@ -205,12 +204,12 @@ void reassign_huge_nodes(
         uint32_t off = COMMON_VARS_SIZE_BYTES + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries) * sizeof(KeyValueFloat);
         hashWeight = (KeyValueFloat*) (&shared_mem[off]);
         assert( shared_mem + COMMON_VARS_SIZE_BYTES <= (char*) hashWeight);
-        hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
+        hashComm   = ((KeyValueInt*)   hashWeight) + hasharrayEntries;
         assert(globalHasharray == nullptr);
     } else {
         // printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
-        hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
+        hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
     }
 
     uint64_t* __tmp = (uint64_t*) shared_mem;
@@ -589,7 +588,7 @@ float reassign_communities_bin(
         bool useGlobalMem = SHARED_MEM_SIZE < shmBytes + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
 
         if (useGlobalMem) {
-            size_t memsize = sizeof(KeyValueFloat) * threadsY * (2 * hashArrayEntriesPerComm);
+            size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             printf("memsize: %d\n", memsize);
             HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
