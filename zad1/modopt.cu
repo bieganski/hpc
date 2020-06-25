@@ -773,6 +773,8 @@ float reassign_communities(
 
             cudaDeviceSynchronize();
 
+            printf("OSTRO\n");
+
             // std::cout << "ostrooo:\n";
             // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
             // std::cout << "a patrz teraz: \n";
