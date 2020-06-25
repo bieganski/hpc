@@ -752,7 +752,7 @@ float reassign_communities(
             
             // printf("\nBIN nodes with maxDeg <= %d\n", binsHost[i]);
             // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
-
+printf("OSTRO4\n");
             uint32_t binNodesNum = thrust::distance(it0, it);
             if (binNodesNum == 0)
                 break;
