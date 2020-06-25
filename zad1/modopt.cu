@@ -179,10 +179,10 @@ void reassign_huge_nodes(
 
     assert(edge_ptr < 32);
 
-    if (i_ptr >= nodesPerBlock * blockDim.x && edge_ptr == 0) {}
-        printf("i_ptr : %d + %d*%d, nodes: %d\n", threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock* blockDim.x);
+    // if (i_ptr >= nodesPerBlock * blockDim.x && edge_ptr == 0) {}
+    //     printf("i_ptr : %d + %d*%d, nodes: %d\n", threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock* blockDim.x);
+    // return;
 
-    return;
     // before any early return, let's utilize all threads for zeroing memory.
 
     KeyValueFloat* hashWeight;
@@ -566,13 +566,14 @@ float reassign_communities_bin(
     uint32_t threadsX = min(maxDegree, 32);
     uint32_t maxThreadsY = 1024 / threadsX;
     uint32_t threadsY = min(maxThreadsY, binNodesNum);
-    uint32_t blockNum = ceil( (float)binNodesNum / threadsY );
+    uint32_t blockNum = ceil( (float)binNodesNum / (float) threadsY );
 
     // assert(blockNum * threadsY >= binNodesNum);
     if (blockNum * threadsY < binNodesNum) {
         printf("MOD FAK: binNodesNum: %d , blockNum: %d, threadsY: %d \n", binNodesNum, blockNum, threadsY);
     }
     dim3 dim(threadsX, threadsY);
+    printf("PATOLA: (%d, %d) x %d\n", threadsX, threadsY, blockNum);
 
     if (maxDegree > 32) {
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
