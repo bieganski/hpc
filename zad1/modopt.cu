@@ -179,11 +179,9 @@ void reassign_huge_nodes(
 
     assert(edge_ptr < 32);
 
-    // if (i_ptr >= nodesPerBlock * blockDim.x && edge_ptr == 0) {}
-    //     printf("i_ptr : %d + %d*%d, nodes: %d\n", threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock* blockDim.x);
+    if (i_ptr >= nodesPerBlock * gridDim.x) {}
+        printf("i_ptr : %d + %d*%d, nodes: %d\n", threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock* blockDim.x);
     // return;
-
-    printf("MAM CIE: %d %d\n", nodesPerBlock, gridDim.x);
 
     // before any early return, let's utilize all threads for zeroing memory.
 
