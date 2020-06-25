@@ -593,6 +593,7 @@ float reassign_communities_bin(
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             printf("memsize: %d\n", memsize);
             HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
+            printf("KUrWA; %p\n", (void*) deviceGlobalHashArrays);
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
