@@ -177,10 +177,6 @@ void reassign_huge_nodes(
     if (i_ptr + edge_ptr == 0)
         numChanged = 0;
     
-    
-    return;
-
-
     assert(edge_ptr < 32);
 
     if (i_ptr >= nodesPerBlock * gridDim.x) {
@@ -211,7 +207,7 @@ void reassign_huge_nodes(
         hashComm   = ((KeyValueInt*)   hashWeight) + hasharrayEntries;
         assert(globalHasharray == nullptr);
     } else {
-        // printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
+        printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
     }
