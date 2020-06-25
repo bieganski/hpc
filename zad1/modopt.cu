@@ -204,7 +204,7 @@ void reassign_huge_nodes(
         hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
         assert(globalHasharray == nullptr);
     } else {
-        printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
+        // printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
     }
@@ -608,9 +608,9 @@ float reassign_communities_bin(
         // if (globalHashArrays != nullptr) {
         //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
         // }
-        if (useGlobalMem) {
-            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
-        }
+        // if (useGlobalMem) {
+        //     HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+        // }
 
     } else {
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
