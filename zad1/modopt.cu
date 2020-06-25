@@ -229,8 +229,6 @@ void reassign_huge_nodes(
     }
     int i = binNodes[i_ptr]; // my vertex
 
-    
-    
 
     // variables common for each vertex, accumulating ei_to_Ci value 
     // computed in parallel
@@ -612,9 +610,9 @@ float reassign_communities_bin(
         // if (globalHashArrays != nullptr) {
         //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
         // }
-        // if (useGlobalMem) {
-        //     HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
-        // }
+        if (useGlobalMem) {
+            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+        }
 
     } else {
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
