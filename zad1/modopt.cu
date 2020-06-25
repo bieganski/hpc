@@ -207,7 +207,7 @@ void reassign_huge_nodes(
         hashComm   = ((KeyValueInt*)   hashWeight) + hasharrayEntries;
         assert(globalHasharray == nullptr);
     } else {
-        printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
+        // printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
     }
@@ -222,6 +222,8 @@ void reassign_huge_nodes(
         hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
+
+    return;
 
     if (numNodes -1 < i_ptr) {
         // printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
