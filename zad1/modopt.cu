@@ -223,8 +223,6 @@ void reassign_huge_nodes(
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
 
-    return;
-
     if (numNodes -1 < i_ptr) {
         // printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
         return;
@@ -575,7 +573,7 @@ float reassign_communities_bin(
         printf("MOD FAK: binNodesNum: %d , blockNum: %d, threadsY: %d \n", binNodesNum, blockNum, threadsY);
     }
     dim3 dim(threadsX, threadsY);
-    printf("PATOLA: (%d, %d) x %d\n", threadsX, threadsY, blockNum);
+    // printf("PATOLA: (%d, %d) x %d\n", threadsX, threadsY, blockNum);
 
     if (maxDegree > 32) {
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
@@ -593,7 +591,6 @@ float reassign_communities_bin(
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             printf("memsize: %d\n", memsize);
             HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
-            printf("KUrWA; %p\n", (void*) deviceGlobalHashArrays);
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
