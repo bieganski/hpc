@@ -746,6 +746,7 @@ float reassign_communities(
 
         // for each bin sequentially computes new communities
         for (int i = 1; ; i++) {
+            printf("OSTRO3\n");
             auto it = thrust::partition(it0, G.end(), partitionGenerator(i));
             uint32_t maxDegree = binsHost[i];
             
@@ -788,11 +789,14 @@ float reassign_communities(
             updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm, V);
             cudaDeviceSynchronize();
 
+            printf("OSTRO1\n");
+
             // recompute AC values
             zeroAC(ac, V_MAX_IDX);
             computeAC<<<pair.first, pair.second>>> (V_MAX_IDX, k, ac, comm);
             cudaDeviceSynchronize();
 
+            printf("OSTRO2\n");
             it0 = it;
         }
 
