@@ -179,8 +179,9 @@ void reassign_huge_nodes(
 
     assert(edge_ptr < 32);
 
-    if (i_ptr >= nodesPerBlock * gridDim.x) {}
+    if (i_ptr >= nodesPerBlock * gridDim.x) {
         printf("i_ptr : %d = %d + %d*%d, nodes: %d\n", i_ptr, threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock * gridDim.x);
+    }
     // return;
 
     // before any early return, let's utilize all threads for zeroing memory.
