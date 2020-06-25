@@ -209,6 +209,7 @@ void reassign_huge_nodes(
     } else {
         // printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
         assert(globalHasharray != nullptr);
+        printf("Kurwa: %p\n", (void*) globalHasharray);
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
     }
