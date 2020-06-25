@@ -176,6 +176,10 @@ void reassign_huge_nodes(
 
     if (i_ptr + edge_ptr == 0)
         numChanged = 0;
+    
+    
+    return;
+
 
     assert(edge_ptr < 32);
 
@@ -612,9 +616,9 @@ float reassign_communities_bin(
         // if (globalHashArrays != nullptr) {
         //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
         // }
-        // if (useGlobalMem) {
-        //     HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
-        // }
+        if (useGlobalMem) {
+            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+        }
 
     } else {
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
