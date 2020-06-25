@@ -183,7 +183,7 @@ void reassign_huge_nodes(
     //     printf("i_ptr : %d + %d*%d, nodes: %d\n", threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock* blockDim.x);
     // return;
 
-    printf("MAM CIE: %d %d\n", nodesPerBlock, blockDim.x);
+    printf("MAM CIE: %d %d\n", nodesPerBlock, gridDim.x);
 
     // before any early return, let's utilize all threads for zeroing memory.
 
