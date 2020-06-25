@@ -615,9 +615,9 @@ float reassign_communities_bin(
         // if (globalHashArrays != nullptr) {
         //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
         // }
-        if (useGlobalMem) {
-            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
-        }
+        // if (useGlobalMem) {
+        //     HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+        // }
 
     } else {
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
