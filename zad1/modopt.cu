@@ -177,11 +177,10 @@ void reassign_huge_nodes(
     if (i_ptr + edge_ptr == 0)
         numChanged = 0;
 
-    printf("i_ptr : %d\n", i_ptr);
-
     assert(edge_ptr < 32);
-    assert(i_ptr < nodesPerBlock);
 
+    if (i_ptr >= nodesPerBlock)
+        printf("i_ptr : %d, nodes: %d\n", i_ptr, nodesPerBlock);
 
     return;
     // before any early return, let's utilize all threads for zeroing memory.
