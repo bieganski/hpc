@@ -579,7 +579,7 @@ float reassign_communities_bin(
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
         // bool useGlobalMem = maxDegree >= 1024;
 
-        float *globalHashArrays = nullptr, *deviceGlobalHashArrays;
+        char *deviceGlobalHashArrays;
 
         // it will be increased conditionally later
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
