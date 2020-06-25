@@ -180,6 +180,8 @@ void reassign_huge_nodes(
     assert(edge_ptr < 32);
     assert(i_ptr < nodesPerBlock);
 
+    return;
+
     // before any early return, let's utilize all threads for zeroing memory.
 
     KeyValueFloat* hashWeight;
