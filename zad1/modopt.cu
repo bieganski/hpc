@@ -172,7 +172,7 @@ void reassign_huge_nodes(
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
 
-    int i_ptr = threadIdx.y + blockIdx.x * blockDim.y; // my vertex pointer
+    int i_ptr = threadIdx.y + blockIdx.x * 32; // TODO blockDim.y; // my vertex pointer
     int edge_ptr = threadIdx.x; // my edge pointer
 
     if (i_ptr + edge_ptr == 0)
@@ -195,13 +195,13 @@ void reassign_huge_nodes(
 
     assert(VAR_MEM_PER_VERTEX_BYTES_DEFINE == VAR_MEM_PER_VERTEX_BYTES);
 
-    uint32_t COMMON_VARS_SIZE_BYTES = VAR_MEM_PER_VERTEX_BYTES * nodesPerBlock;
-
+    
     // TODO customize this
     bool shared = !useGlobalMem; // COMMON_VARS_SIZE_BYTES + (2 * hasharrayEntries * sizeof(KeyValueInt)) * numNodes <= SHARED_MEM_SIZE; 
 
     // very careful pointer handling here, because of lots of type mismatches and casting
     if (shared) {
+        uint32_t COMMON_VARS_SIZE_BYTES = VAR_MEM_PER_VERTEX_BYTES * nodesPerBlock;
         uint32_t off = COMMON_VARS_SIZE_BYTES + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries) * sizeof(KeyValueFloat);
         hashWeight = (KeyValueFloat*) (&shared_mem[off]);
         assert( shared_mem + COMMON_VARS_SIZE_BYTES <= (char*) hashWeight);
@@ -219,7 +219,8 @@ void reassign_huge_nodes(
 
     {
         uint64_t* tmp = (uint64_t*) (shared ? shared_mem : perVertexVars);
-        for (int i = 0; i < 1 + COMMON_VARS_SIZE_BYTES / 8; i++) {
+        uint32_t perVertexVarsBytes = VAR_MEM_PER_VERTEX_BYTES * (shared ? nodesPerBlock : numNodes);
+        for (int i = 0; i < 1 + perVertexVarsBytes / 8; i++) {
             tmp[i] = 0;
         }
     }
