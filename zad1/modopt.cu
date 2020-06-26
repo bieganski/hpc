@@ -220,13 +220,15 @@ void reassign_huge_nodes(
         __tmp[i] = 0;
     }
 
+
+    return;
+
     // TODO za dużo roboty
     for (int i = edge_ptr; i < hasharrayEntries; i += maxDegree) {
         hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
 
-    return;
 
     if (numNodes -1 < i_ptr) {
         // printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
