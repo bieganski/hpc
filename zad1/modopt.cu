@@ -226,6 +226,8 @@ void reassign_huge_nodes(
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
 
+    return;
+
     if (numNodes -1 < i_ptr) {
         // printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
         return;
