@@ -617,7 +617,7 @@ float reassign_communities_bin(
 
         printf("MODOPT: maxdeg: %d, reassign_huge_nodes<< %d, (%d, %d), %d\n", maxDegree, blockNum, threadsX, threadsY, shmBytes);
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
-            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, useGlobalMem);
+            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, useGlobalMem, perVertexVars);
 
         cudaDeviceSynchronize();
         // if (globalHashArrays != nullptr) {
