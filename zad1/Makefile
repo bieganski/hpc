@@ -37,7 +37,7 @@
 CUDA_PATH ?= "/usr/local/cuda"
 
 
-dbg=1
+# dbg=1
 
 ##############################
 # start deprecated interface #
