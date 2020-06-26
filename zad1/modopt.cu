@@ -167,7 +167,8 @@ void reassign_huge_nodes(
                         const float m,
                         const char*    globalHasharray,
                         const uint32_t stride,
-                        const bool useGlobalMem) {
+                        const bool useGlobalMem,
+                        char *perVertexVars) {
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
 
@@ -209,17 +210,18 @@ void reassign_huge_nodes(
     } else {
         // printf("ENTRIES: %d, num: %d  \n", hasharrayEntries, i_ptr * (2 * hasharrayEntries));
         assert(globalHasharray != nullptr);
+        assert(perVertexVars != nullptr);
         
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
         // printf("Kurwa: supp_diff: %d, %p, %p\n", hasharrayEntries * 8, (void*) hashWeight, (void*) hashComm);
     }
 
-    return;
-
-    uint64_t* __tmp = (uint64_t*) shared_mem;
-    for (int i =0; i < 1 + COMMON_VARS_SIZE_BYTES / 8; i++) {
-        __tmp[i] = 0;
+    {
+        uint64_t* tmp = (uint64_t*) (shared ? shared_mem : perVertexVars);
+        for (int i = 0; i < 1 + COMMON_VARS_SIZE_BYTES / 8; i++) {
+            tmp[i] = 0;
+        }
     }
 
     // TODO za dużo roboty
@@ -238,13 +240,14 @@ void reassign_huge_nodes(
 
     // variables common for each vertex, accumulating ei_to_Ci value 
     // computed in parallel
+    char* realPerVertexVars = (shared ? shared_mem : perVertexVars);
     uint32_t ei_to_ci_off_bytes = (i_ptr % nodesPerBlock) * VAR_MEM_PER_VERTEX_BYTES;
-    int32_t* glob_ei_to_Ci = (int32_t*) &shared_mem[ei_to_ci_off_bytes];
+    int32_t* glob_ei_to_Ci = (int32_t*) &realPerVertexVars[ei_to_ci_off_bytes];
     
     uint32_t loop_off_bytes = ei_to_ci_off_bytes + sizeof(int32_t);
     assert(ei_to_ci_off_bytes < loop_off_bytes);
     assert(loop_off_bytes < COMMON_VARS_SIZE_BYTES);
-    int32_t* glob_loop = (int32_t*) &shared_mem[loop_off_bytes];
+    int32_t* glob_loop = (int32_t*) &realPerVertexVars[loop_off_bytes];
 
     __syncthreads();
 
@@ -583,7 +586,7 @@ float reassign_communities_bin(
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
         // bool useGlobalMem = maxDegree >= 1024;
 
-        char *deviceGlobalHashArrays = nullptr;
+        char *deviceGlobalHashArrays = nullptr, *perVertexVars = nullptr;
 
         // it will be increased conditionally later
         uint32_t shmBytes = threadsY * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
@@ -595,6 +598,10 @@ float reassign_communities_bin(
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             printf("memsize: %d\n", memsize);
             HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
+
+            size_t perVertexMemSize = VAR_MEM_PER_VERTEX_BYTES_DEFINE * binNodesNum;
+            HANDLE_ERROR(cudaMalloc(&perVertexVars, perVertexMemSize));
+             
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
@@ -618,7 +625,10 @@ float reassign_communities_bin(
         // }
         if (useGlobalMem) {
             assert(deviceGlobalHashArrays != nullptr);
+            assert(perVertexVars != nullptr);
+            
             HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+            HANDLE_ERROR(cudaFree(perVertexVars));
         }
 
     } else {
