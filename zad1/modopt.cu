@@ -212,7 +212,7 @@ void reassign_huge_nodes(
         
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
-        printf("Kurwa: supp_diff: %d, %p, %p\n", hashArrayEntries * 8, (void*) hashWeight, (void*) hashComm);
+        printf("Kurwa: supp_diff: %d, %p, %p\n", hasharrayEntries * 8, (void*) hashWeight, (void*) hashComm);
     }
 
     uint64_t* __tmp = (uint64_t*) shared_mem;
