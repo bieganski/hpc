@@ -247,7 +247,7 @@ void reassign_huge_nodes(
     
     uint32_t loop_off_bytes = ei_to_ci_off_bytes + sizeof(int32_t);
     assert(ei_to_ci_off_bytes < loop_off_bytes);
-    assert(loop_off_bytes < COMMON_VARS_SIZE_BYTES);
+    // assert(loop_off_bytes < COMMON_VARS_SIZE_BYTES);
     int32_t* glob_loop = (int32_t*) &realPerVertexVars[loop_off_bytes];
 
     __syncthreads();
