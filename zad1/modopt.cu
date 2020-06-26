@@ -803,7 +803,8 @@ printf("OSTRO4\n");
             auto pair = getBlockThreadSplit(binNodesNum);
 
             // update newComm table
-            updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm, V);
+            // OTDOODODODOD
+            // updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm, V);
             cudaDeviceSynchronize();
 
             printf("OSTRO1\n");
