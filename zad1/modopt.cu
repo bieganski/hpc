@@ -212,16 +212,15 @@ void reassign_huge_nodes(
         
         hashWeight = ( (KeyValueFloat*) globalHasharray ) + i_ptr * (2 * hasharrayEntries);
         hashComm   = ((KeyValueInt*) hashWeight) + hasharrayEntries;
-        printf("Kurwa: supp_diff: %d, %p, %p\n", hasharrayEntries * 8, (void*) hashWeight, (void*) hashComm);
+        // printf("Kurwa: supp_diff: %d, %p, %p\n", hasharrayEntries * 8, (void*) hashWeight, (void*) hashComm);
     }
+
+    return;
 
     uint64_t* __tmp = (uint64_t*) shared_mem;
     for (int i =0; i < 1 + COMMON_VARS_SIZE_BYTES / 8; i++) {
         __tmp[i] = 0;
     }
-
-
-    return;
 
     // TODO za dużo roboty
     for (int i = edge_ptr; i < hasharrayEntries; i += maxDegree) {
