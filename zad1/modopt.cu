@@ -565,7 +565,7 @@ float reassign_communities_bin(
                         uint32_t maxDegree,
                         const float m) {
 
-    if (maxDegree > 10001) {
+    if (maxDegree > 20001) {
         assert(false); // no support for that huge bins
     }
 
