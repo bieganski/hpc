@@ -180,6 +180,9 @@ void reassign_huge_nodes(
     
     assert(edge_ptr < 32);
 
+
+    // printf("UWAGA:");
+
     if (i_ptr >= nodesPerBlock * gridDim.x) {
         printf("i_ptr : %d = %d + %d*%d, nodes: %d\n", i_ptr, threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock * gridDim.x);
     }
@@ -222,7 +225,7 @@ void reassign_huge_nodes(
     }
 
     // TODO za dużo roboty
-    for (int i = edge_ptr; i < hasharrayEntries; i += maxDegree) {
+    for (int i = edge_ptr; i < hasharrayEntries; i += 32) {
         hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
