@@ -167,7 +167,7 @@ void reassign_huge_nodes(
                         const float m,
                         const char*    globalHasharray,
                         const uint32_t stride,
-                        const bool useGlobalMem,
+                        const bool shared,
                         char *perVertexVars) {
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
@@ -191,17 +191,13 @@ void reassign_huge_nodes(
 
     // TODO: customize these
     // ei_to_Ci, loop, deltaModRes
-    uint32_t VAR_MEM_PER_VERTEX_BYTES = sizeof(float) + sizeof(float) + sizeof(uint64_t);
+    // uint32_t VAR_MEM_PER_VERTEX_BYTES = sizeof(float) + sizeof(float) + sizeof(uint64_t);
 
-    assert(VAR_MEM_PER_VERTEX_BYTES_DEFINE == VAR_MEM_PER_VERTEX_BYTES);
-
-    
-    // TODO customize this
-    bool shared = !useGlobalMem; // COMMON_VARS_SIZE_BYTES + (2 * hasharrayEntries * sizeof(KeyValueInt)) * numNodes <= SHARED_MEM_SIZE; 
+    // assert(VAR_MEM_PER_VERTEX_BYTES_DEFINE == VAR_MEM_PER_VERTEX_BYTES);
 
     // very careful pointer handling here, because of lots of type mismatches and casting
     if (shared) {
-        uint32_t COMMON_VARS_SIZE_BYTES = VAR_MEM_PER_VERTEX_BYTES * nodesPerBlock;
+        uint32_t COMMON_VARS_SIZE_BYTES = VAR_MEM_PER_VERTEX_BYTES_DEFINE * nodesPerBlock;
         uint32_t off = COMMON_VARS_SIZE_BYTES + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries) * sizeof(KeyValueFloat);
         hashWeight = (KeyValueFloat*) (&shared_mem[off]);
         assert( shared_mem + COMMON_VARS_SIZE_BYTES <= (char*) hashWeight);
@@ -219,7 +215,7 @@ void reassign_huge_nodes(
 
     {
         uint64_t* tmp = (uint64_t*) (shared ? shared_mem : perVertexVars);
-        uint32_t perVertexVarsBytes = VAR_MEM_PER_VERTEX_BYTES * (shared ? nodesPerBlock : numNodes);
+        uint32_t perVertexVarsBytes = VAR_MEM_PER_VERTEX_BYTES_DEFINE * (shared ? nodesPerBlock : numNodes);
         for (int i = 0; i < 1 + perVertexVarsBytes / 8; i++) {
             tmp[i] = 0;
         }
@@ -619,7 +615,7 @@ float reassign_communities_bin(
 
         printf("MODOPT: maxdeg: %d, reassign_huge_nodes<< %d, (%d, %d), %d\n", maxDegree, blockNum, threadsX, threadsY, shmBytes);
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
-            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, useGlobalMem, perVertexVars);
+            V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, !useGlobalMem, perVertexVars);
 
         cudaDeviceSynchronize();
         // if (globalHashArrays != nullptr) {
