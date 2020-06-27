@@ -261,12 +261,12 @@ void reassign_huge_nodes(
         if (V[i + 1] - V[i] -1 < EDGE) {
             break;
         }
-        if (maxDegree <= 1024) {
-            // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
-            assert(cntr == 0); // only one iteration needed
-        } else {
-            ; // assert(stride == 1024);
-        }
+        // if (maxDegree <= 1024) {
+        //     // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
+        //     assert(cntr == 0); // only one iteration needed
+        // } else {
+        //     ; // assert(stride == 1024);
+        // }
 
         uint32_t j = E[V[i] + EDGE]; // my neighbor
         if (comm[j] == 0) {
