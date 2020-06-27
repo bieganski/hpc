@@ -172,7 +172,7 @@ void reassign_huge_nodes(
 
     extern __shared__ char shared_mem[]; // shared memory is one-byte char type, for easy offset applying
 
-    int i_ptr = threadIdx.y + blockIdx.x * 32; // TODO blockDim.y; // my vertex pointer
+    int i_ptr = threadIdx.y + blockIdx.x * blockDim.y; // my vertex pointer
     int edge_ptr = threadIdx.x; // my edge pointer
 
     if (i_ptr + edge_ptr == 0)
@@ -569,7 +569,9 @@ float reassign_communities_bin(
 
     int stride = 32;
     uint32_t threadsX = min(maxDegree, 32);
-    uint32_t maxThreadsY = 1024 / threadsX;
+    
+    uint32_t maxThreadsY = 512 / threadsX; // TODO customize
+
     uint32_t threadsY = min(maxThreadsY, binNodesNum);
     uint32_t blockNum = ceil( (float)binNodesNum / (float) threadsY );
 
