@@ -275,8 +275,12 @@ void reassign_huge_nodes(
             printf("DUPA: i=%d, j=%d", i, j);
         }
 
+        printf("jak sie powiedzialo A..\n");
+
         uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
         float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
+
+        printf("to mowi sie tez B!\n");
 
         // if (i == 2) {
         //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
@@ -354,7 +358,7 @@ void reassign_huge_nodes(
         uint64_t test = *glob_deltaMod;
         uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
         // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
-        // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
+        printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
 
         float gain = deltaModBest - ei_to_Ci / m;
 
