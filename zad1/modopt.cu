@@ -566,6 +566,7 @@ float reassign_communities_bin(
                         const float m) {
 
     if (maxDegree > 20001) {
+        printf("niemozliwe kurde: %d, v0=%d, v1 = %d\n", binNodesNum, V[1] - V[0], V[2] - V[1]);
         assert(false); // no support for that huge bins
     }
 
@@ -766,13 +767,12 @@ float reassign_communities(
 
         // for each bin sequentially computes new communities
         for (int i = 1; ; i++) {
-            printf("OSTRO3\n");
             auto it = thrust::partition(it0, G.end(), partitionGenerator(i));
             uint32_t maxDegree = binsHost[i];
             
             // printf("\nBIN nodes with maxDeg <= %d\n", binsHost[i]);
             // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
-printf("OSTRO4\n");
+
             uint32_t binNodesNum = thrust::distance(it0, it);
             if (binNodesNum == 0)
                 break;
@@ -809,14 +809,11 @@ printf("OSTRO4\n");
             updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm, V);
             cudaDeviceSynchronize();
 
-            printf("OSTRO1\n");
-
             // recompute AC values
             zeroAC(ac, V_MAX_IDX);
             computeAC<<<pair.first, pair.second>>> (V_MAX_IDX, k, ac, comm);
             cudaDeviceSynchronize();
 
-            printf("OSTRO2\n");
             it0 = it;
         }
 
