@@ -241,6 +241,9 @@ void reassign_huge_nodes(
     // variables common for each vertex, accumulating ei_to_Ci value 
     // computed in parallel
     char* realPerVertexVars = (shared ? shared_mem : perVertexVars);
+    if (i_ptr + edge_ptr == 0) {
+        printf("NO LOL :  : :: !!!! ! %p\n", (void*)(realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE));
+    }
     uint32_t ei_to_ci_off_bytes = (i_ptr % (shared ? nodesPerBlock : numNodes)) * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
     int32_t* glob_ei_to_Ci = (int32_t*) &realPerVertexVars[ei_to_ci_off_bytes];
     
