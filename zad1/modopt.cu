@@ -615,6 +615,7 @@ float reassign_communities_bin(
             // assert(globalHashArrays != nullptr);
             
             printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
+            printf("huge, [%p, %p], [%p, %p]\n", (void*)deviceGlobalHashArrays, (void*) (deviceGlobalHashArrays + memsize), (void*)perVertexVars, (void*)(perVertexVars + perVertexMemSize));
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
