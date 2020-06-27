@@ -614,7 +614,7 @@ float reassign_communities_bin(
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             // assert(globalHashArrays != nullptr);
             
-            // printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
+            printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
@@ -622,7 +622,7 @@ float reassign_communities_bin(
             //     printf("LOL: %d\n", shmBytes);
             // }
             
-            // printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
+            printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
             assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
