@@ -196,9 +196,8 @@ void reassign_huge_nodes(
 
     // TODO: customize these
     // ei_to_Ci, loop, deltaModRes
-    // uint32_t VAR_MEM_PER_VERTEX_BYTES = sizeof(float) + sizeof(float) + sizeof(uint64_t);
-
-    // assert(VAR_MEM_PER_VERTEX_BYTES_DEFINE == VAR_MEM_PER_VERTEX_BYTES);
+    uint32_t lol = sizeof(int32_t) + sizeof(int32_t) + sizeof(uint64_t);
+    assert(VAR_MEM_PER_VERTEX_BYTES_DEFINE == lol);
 
     // very careful pointer handling here, because of lots of type mismatches and casting
     if (shared) {
@@ -246,15 +245,15 @@ void reassign_huge_nodes(
     int32_t* glob_ei_to_Ci = (int32_t*) &realPerVertexVars[ei_to_ci_off_bytes];
     
     uint32_t loop_off_bytes = ei_to_ci_off_bytes + sizeof(int32_t);
-    assert(ei_to_ci_off_bytes < loop_off_bytes);
-    // assert(loop_off_bytes < COMMON_VARS_SIZE_BYTES);
     int32_t* glob_loop = (int32_t*) &realPerVertexVars[loop_off_bytes];
 
+    uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(float);
+    uint64_t* glob_deltaMod = (uint64_t*) &realPerVertexVars[deltaMod_off_bytes];
+        
     __syncthreads();
 
     uint64_t deltaMod;
     float ei_to_Ci;
-    uint64_t* glob_deltaMod;
 
     int cntr = 0;
     uint32_t edge_base = edge_ptr;
@@ -315,8 +314,6 @@ void reassign_huge_nodes(
         // we choose community with lower idx. It is accomplished by finding maximal value
         // of pair (int(deltaMod), -newCommIdx). We implement it using concatenation
         // of two unsigned values (obtained by order-preserving bijection from floats).
-        uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(float);
-        glob_deltaMod = (uint64_t*) &shared_mem[deltaMod_off_bytes];
         assert(newCommIdx != UINT32_MAX);
         assert(newCommIdx != 0);
         uint32_t newCommIdxRepr = -1 - newCommIdx; // bits flipped
