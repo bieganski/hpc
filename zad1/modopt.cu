@@ -47,6 +47,7 @@ __device__ uint32_t BINS[] =
         320,
         1024,
         10000,
+        20000,
         UINT32_MAX // hash arrays in global memory
     };
 
