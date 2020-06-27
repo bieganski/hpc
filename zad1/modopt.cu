@@ -566,7 +566,7 @@ float reassign_communities_bin(
                         const float m) {
 
     if (maxDegree > 20001) {
-        printf("niemozliwe kurde: %d, v0=%d, v1 = %d\n", binNodesNum, V[1] - V[0], V[2] - V[1]);
+        // printf("niemozliwe kurde: %d, v0=%d, v1 = %d\n", binNodesNum, V[1] - V[0], V[2] - V[1]);
         assert(false); // no support for that huge bins
     }
 
@@ -612,12 +612,14 @@ float reassign_communities_bin(
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             // assert(globalHashArrays != nullptr);
+            printf("huge: using global, hasharrmem: %d kb, pervertexmem: %d kb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
             // if (shmBytes > SHARED_MEM_SIZE) {
             //     printf("LOL: %d\n", shmBytes);
             // }
+            printf("huge: using shared of size %d kb\n", (float) shmBytes / 1024);
             assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
@@ -626,9 +628,7 @@ float reassign_communities_bin(
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, !useGlobalMem, perVertexVars);
 
         cudaDeviceSynchronize();
-        // if (globalHashArrays != nullptr) {
-        //     HANDLE_ERROR(cudaFreeHost(globalHashArrays));
-        // }
+
         if (useGlobalMem) {
             assert(deviceGlobalHashArrays != nullptr);
             assert(perVertexVars != nullptr);
@@ -791,9 +791,6 @@ float reassign_communities(
 
             cudaDeviceSynchronize();
 
-            printf("OSTRO\n");
-
-            // std::cout << "ostrooo:\n";
             // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
             // std::cout << "a patrz teraz: \n";
             // for (int i = 0; i <= V_MAX_IDX; i++) {
