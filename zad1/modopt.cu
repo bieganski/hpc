@@ -263,9 +263,7 @@ void reassign_huge_nodes(
         if (V[i + 1] - V[i] -1 < EDGE) {
             break;
         }
-        if (cntr > 0) {
-            printf("CNTR: %d, V_size=%d, me: %d\n", cntr, V[i + 1] - V[i], EDGE);
-        }
+        
         // if (maxDegree <= 1024) {
         //     // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
         //     assert(cntr == 0); // only one iteration needed
@@ -278,12 +276,8 @@ void reassign_huge_nodes(
             printf("DUPA: i=%d, j=%d", i, j);
         }
 
-        printf("jak sie powiedzialo A..\n");
-
         uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
         float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
-
-        printf("to mowi sie tez B!\n");
 
         // if (i == 2) {
         //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
