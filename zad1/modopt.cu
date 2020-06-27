@@ -602,7 +602,7 @@ float reassign_communities_bin(
 
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
-            printf("memsize: %d\n", memsize);
+            // printf("memsize: %d\n", memsize);
             HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
 
             size_t perVertexMemSize = VAR_MEM_PER_VERTEX_BYTES_DEFINE * binNodesNum;
@@ -612,14 +612,16 @@ float reassign_communities_bin(
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             // assert(globalHashArrays != nullptr);
-            printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
+            
+            // printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
             // if (shmBytes > SHARED_MEM_SIZE) {
             //     printf("LOL: %d\n", shmBytes);
             // }
-            printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
+            
+            // printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
             assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
