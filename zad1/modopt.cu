@@ -636,8 +636,8 @@ float reassign_communities_bin(
             assert(deviceGlobalHashArrays != nullptr);
             assert(perVertexVars != nullptr);
             
-            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
-            HANDLE_ERROR(cudaFree(perVertexVars));
+            // HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+            // HANDLE_ERROR(cudaFree(perVertexVars));
         }
 
     } else {
