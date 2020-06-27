@@ -261,6 +261,9 @@ void reassign_huge_nodes(
         if (V[i + 1] - V[i] -1 < EDGE) {
             break;
         }
+        if (cntr > 3) {
+            printf("CNTR: %d, V_size=%d, me: %d\n", cntr, V[i + 1] - V[i], EDGE);
+        }
         // if (maxDegree <= 1024) {
         //     // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
         //     assert(cntr == 0); // only one iteration needed
