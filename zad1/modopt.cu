@@ -184,8 +184,6 @@ void reassign_huge_nodes(
         printf("i_ptr : %d = %d + %d*%d, nodes: %d\n", i_ptr, threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock * gridDim.x);
     }
 
-    printf("jestem1\n");
-
     // before any early return, let's utilize all threads for zeroing memory.
 
     KeyValueFloat* hashWeight;
@@ -215,8 +213,6 @@ void reassign_huge_nodes(
         // printf("Kurwa: supp_diff: %d, %p, %p\n", hasharrayEntries * 8, (void*) hashWeight, (void*) hashComm);
     }
 
-    printf("jestem2\n");
-
     {
         uint64_t* tmp = (uint64_t*) (shared ? shared_mem : perVertexVars);
         uint32_t perVertexVarsBytes = VAR_MEM_PER_VERTEX_BYTES_DEFINE * (shared ? nodesPerBlock : numNodes);
@@ -225,13 +221,13 @@ void reassign_huge_nodes(
         }
     }
 
-    printf("jestem3\n");
-
     // TODO za dużo roboty
     for (int i = edge_ptr; i < hasharrayEntries; i += maxDegree) {
         hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
+
+    printf("jestem1\n");
 
 
     if (numNodes -1 < i_ptr) {
