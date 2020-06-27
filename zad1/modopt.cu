@@ -807,7 +807,7 @@ printf("OSTRO4\n");
 
             // update newComm table
             // OTDOODODODOD
-            // updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm, V);
+            updateSpecific<<<pair.first, pair.second>>> (binNodes, binNodesNum, newComm, comm, V);
             cudaDeviceSynchronize();
 
             printf("OSTRO1\n");
