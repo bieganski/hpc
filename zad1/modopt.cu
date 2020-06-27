@@ -355,7 +355,7 @@ void reassign_huge_nodes(
         uint64_t test = *glob_deltaMod;
         uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
         // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
-        printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
+        // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
 
         float gain = deltaModBest - ei_to_Ci / m;
 
