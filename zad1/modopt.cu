@@ -48,6 +48,7 @@ __device__ uint32_t BINS[] =
         1024,
         10000,
         20000,
+        100000,
         UINT32_MAX // hash arrays in global memory
     };
 
@@ -565,10 +566,10 @@ float reassign_communities_bin(
                         uint32_t maxDegree,
                         const float m) {
 
-    if (maxDegree > 20001) {
-        // printf("niemozliwe kurde: %d, v0=%d, v1 = %d\n", binNodesNum, V[1] - V[0], V[2] - V[1]);
-        assert(false); // no support for that huge bins
-    }
+    // if (maxDegree > 20001) {
+    //     // printf("niemozliwe kurde: %d, v0=%d, v1 = %d\n", binNodesNum, V[1] - V[0], V[2] - V[1]);
+    //     assert(false); // no support for that huge bins
+    // }
 
     // TODO customize this, maybe check 2 * maxDegree?
     uint32_t hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
