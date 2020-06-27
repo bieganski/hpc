@@ -252,6 +252,8 @@ void reassign_huge_nodes(
 
     uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(float);
     uint64_t* glob_deltaMod = (uint64_t*) &realPerVertexVars[deltaMod_off_bytes];
+
+    assert(&realPerVertexVars[deltaMod_off_bytes] < realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE);
         
     __syncthreads();
 
