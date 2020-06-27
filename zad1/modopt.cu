@@ -227,9 +227,6 @@ void reassign_huge_nodes(
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
 
-    printf("jestem1\n");
-
-
     if (numNodes -1 < i_ptr) {
         // printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
         return;
@@ -263,7 +260,7 @@ void reassign_huge_nodes(
         if (V[i + 1] - V[i] -1 < EDGE) {
             break;
         }
-        if (cntr > 3) {
+        if (cntr > 0) {
             printf("CNTR: %d, V_size=%d, me: %d\n", cntr, V[i + 1] - V[i], EDGE);
         }
         // if (maxDegree <= 1024) {
