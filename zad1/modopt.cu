@@ -250,10 +250,10 @@ void reassign_huge_nodes(
     uint32_t loop_off_bytes = ei_to_ci_off_bytes + sizeof(int32_t);
     int32_t* glob_loop = (int32_t*) &realPerVertexVars[loop_off_bytes];
 
-    uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(float);
+    uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(int32_t);
     uint64_t* glob_deltaMod = (uint64_t*) &realPerVertexVars[deltaMod_off_bytes];
 
-    assert(&realPerVertexVars[deltaMod_off_bytes] < realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE);
+    assert(&realPerVertexVars[deltaMod_off_bytes + 8] == realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE);
         
     __syncthreads();
 
