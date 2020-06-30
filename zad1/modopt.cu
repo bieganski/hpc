@@ -614,6 +614,9 @@ float reassign_communities_bin(
             size_t perVertexMemSize = VAR_MEM_PER_VERTEX_BYTES_DEFINE * binNodesNum;
             HANDLE_ERROR(cudaMalloc(&perVertexVars, perVertexMemSize));
             assert(perVertexVars != nullptr);
+
+            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+            HANDLE_ERROR(cudaFree(perVertexVars));
              
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             // std::memset(globalHashArrays, '\0', memsize);
@@ -643,8 +646,8 @@ float reassign_communities_bin(
             assert(deviceGlobalHashArrays != nullptr);
             assert(perVertexVars != nullptr);
             
-            // HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
-            // HANDLE_ERROR(cudaFree(perVertexVars));
+            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+            HANDLE_ERROR(cudaFree(perVertexVars));
         }
 
     } else {
