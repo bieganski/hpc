@@ -618,6 +618,9 @@ float reassign_communities_bin(
             HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
             HANDLE_ERROR(cudaFree(perVertexVars));
              
+            HANDLE_ERROR(cudaFree(deviceGlobalHashArrays));
+            HANDLE_ERROR(cudaFree(perVertexVars));
+             
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
             // std::memset(globalHashArrays, '\0', memsize);
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
