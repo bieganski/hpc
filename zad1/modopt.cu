@@ -253,7 +253,7 @@ void reassign_huge_nodes(
     uint32_t deltaMod_off_bytes = loop_off_bytes + sizeof(int32_t);
     uint64_t* glob_deltaMod = (uint64_t*) &realPerVertexVars[deltaMod_off_bytes];
 
-    printf("MAM CIE: %p, %p, diff: %p\n", &realPerVertexVars[deltaMod_off_bytes], realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE);
+    printf("MAM CIE: %p, %p, diff: %p\n", &realPerVertexVars[deltaMod_off_bytes], realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE, realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE - &realPerVertexVars[deltaMod_off_bytes]);
 
     // assert(&realPerVertexVars[deltaMod_off_bytes + 8] == realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE);
         
