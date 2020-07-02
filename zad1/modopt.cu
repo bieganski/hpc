@@ -609,10 +609,10 @@ float reassign_communities_bin(
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             // printf("memsize: %d\n", memsize);
-            HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, memsize));
+            HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, 2 * memsize));
 
             size_t perVertexMemSize = VAR_MEM_PER_VERTEX_BYTES_DEFINE * binNodesNum;
-            HANDLE_ERROR(cudaMalloc(&perVertexVars, perVertexMemSize));
+            HANDLE_ERROR(cudaMalloc(&perVertexVars, 2 * perVertexMemSize));
             assert(perVertexVars != nullptr);
 
             // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
