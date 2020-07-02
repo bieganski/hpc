@@ -858,8 +858,7 @@ float reassign_communities(
             // }
             // printf("\n");
 
-            // float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-
+            float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
             printf("MOD CONTRCT: %f\n", mod_contract);
 
             // if (mod1 - mod_contract > FLT_EPSILON) {
