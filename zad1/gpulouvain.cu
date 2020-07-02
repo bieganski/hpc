@@ -85,12 +85,12 @@ void compute_size_degree(const uint32_t V_MAX_IDX,
 __global__
 void compute_compressed_comm(const uint32_t V_MAX_IDX,
                           const uint32_t* __restrict__ V,
-                          const uint32_t* __restrict__ E,
+                          const uint32_t* __restrict__ E, // TODO niepotrzebne
                           const uint32_t* __restrict__ comm,
-                          uint32_t* __restrict__ commSize,
-                          uint32_t* __restrict__ vertexStart,
+                          const uint32_t* __restrict__ commSize, // TODO niepotrzebne
+                          const uint32_t* __restrict__ vertexStart,
                           uint32_t* __restrict__ tmpCounter,
-                          uint32_t* __restrict__ compressedComm) {
+                          uint32_t* __restrict__ com) {
     int tid = 1 + getGlobalIdx();
 
     if (tid > V_MAX_IDX)
@@ -103,10 +103,11 @@ void compute_compressed_comm(const uint32_t V_MAX_IDX,
 
     int idx = atomicAdd(&tmpCounter[my_comm], 1);
 
-    compressedComm[vertexStart[my_comm] + idx] = tid;
+    com[vertexStart[my_comm] + idx] = tid;
 }
 
-__device__ uint32_t CONTRACT_BINS[] = {
+__device__ 
+uint32_t CONTRACT_BINS[] = {
     0,
     16,
     384,
@@ -336,6 +337,8 @@ void contract(const uint32_t V_MAX_IDX,
     
     compute_compressed_comm <<<pair.first, pair.second>>> (V_MAX_IDX, V, E, comm, 
             RAW(commSize), RAW(vertexStart), RAW(tmpCounter), RAW(compressedComm));
+
+    // compressedCom <=> `com` from paper
 
 
     cudaDeviceSynchronize();
