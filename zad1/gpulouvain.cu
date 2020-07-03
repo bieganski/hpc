@@ -303,7 +303,7 @@ void recompute_globalCommAssignment(
 
 
 template <typename T>
-void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = false) {
+void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = false, bool from_zero = false) {
     T* mem = (T*) malloc((max_idx + 1) * sizeof(T));
     cudaMemcpy((void*) mem, (void*) arr, (max_idx + 1) * sizeof(T), cudaMemcpyDeviceToHost);
     if (!verbose) {
@@ -311,7 +311,8 @@ void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = fals
         printf("[C]: %s[5]: %d\n", name, mem[max_idx]);
     } else {
         printf("[C]: %s[1-%d]: ", name, max_idx);
-        for (int i = 1; i <= max_idx; i++) {
+        int i  = from_zero == false : 1 : 0;
+        for (; i <= max_idx; i++) {
             printf(" %d", mem[i]);
         }
         printf("\n");
@@ -384,7 +385,7 @@ void contract(const uint32_t V_MAX_IDX,
 
     computeWTF(V, compressedComm, WTF);
 
-    print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true);
+    print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true, true);
     print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF", true);
     print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos", true);
 
