@@ -168,7 +168,7 @@ void compute_comm_neighbors(
     KeyValueFloat* hashWeight = (KeyValueFloat*) hasharr_ptr;
     KeyValueInt*   hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
 
-    for (int i = myEdgePtr; i < hasharrayEntries; i += WARP_SIZE) {
+    for (int i = 0; i < hasharrayEntries; i++) {
         hashWeight[i] = {.key = hashArrayNull, .value = (float) 0}; // 0 for easy atomicAdd
         hashComm[i]   = {.key = hashArrayNull, .value = hashArrayNull};
     }
@@ -277,6 +277,7 @@ void compute_comm_neighbors(
 
     int myEdgePtr0 = threadIdx.x;
     if (myEdgePtr0 == 0) {
+        assert(commNeighborsNum == insertedByMe);
         // WARNING: we use old community id, because we already know free E indices!
         newV[myComm] = commNeighborsNum; // will be computed prefix sum on it later
     }
