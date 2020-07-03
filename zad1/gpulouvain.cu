@@ -316,7 +316,7 @@ void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = fals
         }
         printf("\n");
     }
-    free(mem);
+    free((void*) mem);
 }
 
 
