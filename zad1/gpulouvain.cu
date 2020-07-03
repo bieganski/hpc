@@ -304,8 +304,8 @@ void recompute_globalCommAssignment(
 
 template <typename T>
 void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = false) {
-    T* mem = (T*) malloc(size * sizeof(T));
-    cudaMemcpy(mem, arr, size * sizeof(T), cudaMemcpyDeviceToHost);
+    T* mem = (T*) malloc((max_idx + 1) * sizeof(T));
+    cudaMemcpy(mem, arr, (max_idx + 1) * sizeof(T), cudaMemcpyDeviceToHost);
     if (!verbose) {
         printf("[C]: %s[1]: %d\n", name, mem[1]);
         printf("[C]: %s[5]: %d\n", name, mem[max_idx]);
