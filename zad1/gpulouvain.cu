@@ -302,6 +302,18 @@ void recompute_globalCommAssignment(
 
 
 __host__
+template <typename T>
+void printf_contract(uint32_t size, T* arr, const char* name) {
+    T* mem = (T*) malloc(size * sizeof(T));
+    cudaMemcpy(mem, arr, size * sizeof(T), cudaMemcpyDeviceToHost);
+    printf("[C]: %s[1]: %d\n", name, mem[1]);
+    printf("[C]: %s[5]: %d\n", name, mem[5]);
+    // printf("[C]: %s[MAX]: %d\n", name, mem[size - 1]);
+    free(mem);
+}
+
+
+__host__
 void contract(const uint32_t V_MAX_IDX,
                           uint32_t* __restrict__ V, 
                           uint32_t* __restrict__ E,
@@ -327,9 +339,8 @@ void contract(const uint32_t V_MAX_IDX,
 
     auto pair = getBlockThreadSplit(V_MAX_IDX);
 
-    printf("[C]: size[1]: %lu, deg[1]: %lu\n", commSize[1], commDegree[1]);
-    printf("[C]: size[5]: %lu, deg[5]: %lu\n", commSize[5], commDegree[5]);
-    printf("[C]: size[MAX]: %d, deg[MAX]: %d\n", commSize[V_MAX_IDX], commDegree[V_MAX_IDX]);
+    printf_contract(V_MAX_IDX, commSize, "commSize");
+    printf_contract(V_MAX_IDX, commDegree, "commDegree");
 
     compute_size_degree<<<pair.first, pair.second>>> (V_MAX_IDX, V, comm, RAW(commSize), RAW(commDegree));
 
