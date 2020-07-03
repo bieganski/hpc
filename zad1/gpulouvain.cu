@@ -479,7 +479,7 @@ void contract(const uint32_t V_MAX_IDX,
         uint32_t hashArrayEntriesPerComm;
 
         if (degUpperBound == UINT32_MAX) {
-            hashArrayEntriesPerComm = next_2_pow(20000); // TODO customize this
+            hashArrayEntriesPerComm = next_2_pow(100000); // TODO customize this
 
             shmSize = 0;
             uint32_t TOTAL_HASHARRAY_ENTRIES = (2 * hashArrayEntriesPerComm) * binNodesNum;
