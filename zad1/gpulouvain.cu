@@ -174,12 +174,12 @@ void compute_comm_neighbors(
     }
 
     uint32_t insertedByMe = 0;
-    uint32_t start = firstNodePtrIncl;
-    uint32_t offset = WTF[firstNodePtrIncl];
+    // uint32_t start = firstNodePtrIncl;
+    // uint32_t offset = WTF[firstNodePtrIncl];
 
     bool finish = false; // cannot use early return because of usage of warp-level primitives
 
-    uint32_t nodeIdx = start + 0;
+    uint32_t nodeIdx = firstNodePtrIncl + 0;
     while(true) {
 
         if (nodeIdx >= lastNodePtrExcl) {
@@ -284,27 +284,30 @@ void compute_comm_neighbors(
     // assert(mask == FULL_MASK);
     uint32_t idx0 = edgePos[myComm];
     
-    // if (threadIdx.x != 0)
-    //     return;
-    __syncthreads();
+    if (threadIdx.x != 0)
+        return;
+    // __syncthreads();
 
     // TODO
     // this should be performed by all warps, but there were unknown
     // problems with this
-    for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
-    // for (int i = 0; i < hasharrayEntries; i++) {
+    // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
+    for (int i = 0; i < hasharrayEntries; i++) {
         if (hashComm[i].key != hashArrayNull) {
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             assert(newE[idx0 + myIdx] == 0);
             assert(newW[idx0 + myIdx] == 0);
             newE[idx0 + myIdx] = hashComm[i].value;
+
+            assert(hashWeight[i].value != 0.0);
+            newW[idx0 + myIdx] = hashWeight[i].value;
             
-            if (myComm == hashComm[i].value) {
-                // TODO self-loop, should it be halved?
-                newW[idx0 + myIdx] = hashWeight[i].value; //  / 2.0;
-            } else {
-                newW[idx0 + myIdx] = hashWeight[i].value;
-            }
+            // if (myComm == hashComm[i].value) {
+            //     // TODO self-loop, should it be halved?
+            //     newW[idx0 + myIdx] = hashWeight[i].value; //  / 2.0;
+            // } else {
+            //     newW[idx0 + myIdx] = hashWeight[i].value;
+            // }
         }
     }
     if (freeIndices[myComm] != newV[myComm]) {
