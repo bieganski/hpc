@@ -310,8 +310,8 @@ void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = fals
         printf("[C]: %s[1]: %d\n", name, mem[1]);
         printf("[C]: %s[5]: %d\n", name, mem[max_idx]);
     } else {
-        printf("[C]: %s[1-%d]: ", name, max_idx);
         int i  = from_zero == false ? 1 : 0;
+        printf("[C]: %s[%d,%d]: ", name, i, max_idx);
         for (; i <= max_idx; i++) {
             printf(" %d", mem[i]);
         }
