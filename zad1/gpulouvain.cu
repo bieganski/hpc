@@ -388,6 +388,7 @@ void contract(const uint32_t V_MAX_IDX,
     print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true, true);
     print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF", true);
     print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos", true);
+    print_DEBUG(V_MAX_IDX, RAW(vertexStart), "vertexStart", true);
 
     uint32_t E_size = V[V_MAX_IDX + 1];
     // Each call to `compute_comm _neighbors` kernel updates part of these values
