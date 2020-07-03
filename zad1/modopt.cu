@@ -852,7 +852,7 @@ float reassign_communities(
                 printf("\n*****************                 CONTRACT2                ****************\n");
 
                 float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-                printf("MOD CONTRCT: %f\n", mod_contract);
+                fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
                 fprintf(stderr, "\n=======\n");
                 // print_DEBUG_stat(mod1, mod_contract);
             }
@@ -872,7 +872,7 @@ float reassign_communities(
             // printf("\n");
 
             float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-            printf("MOD CONTRCT: %f\n", mod_contract);
+            fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
 
             // print_DEBUG_stat(mod1, mod_contract);
 
