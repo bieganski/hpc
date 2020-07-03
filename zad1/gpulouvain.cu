@@ -278,7 +278,6 @@ void compute_comm_neighbors(
     int myEdgePtr0 = threadIdx.x;
     if (myEdgePtr0 == 0) {
         // WARNING: we use old community id, because we already know free E indices!
-        printf("DEBUG: insertedByWarp: %d\n", commNeighborsNum);
         newV[myComm] = commNeighborsNum; // will be computed prefix sum on it later
     }
 
@@ -287,7 +286,6 @@ void compute_comm_neighbors(
     
     if (threadIdx.x != 0)
         return;
-    printf("dzialam.\n");
     // TODO
     // this should be performed by all warps, but there were unknown
     // problems with this
@@ -352,9 +350,12 @@ void recompute_globalCommAssignment(
 }
 
 
+bool DBG = false;
 
 template <typename T>
 void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = false, bool from_zero = false) {
+    if (!DBG)
+        return;
     T* mem = (T*) malloc((max_idx + 1) * sizeof(T));
     cudaMemcpy((void*) mem, (void*) arr, (max_idx + 1) * sizeof(T), cudaMemcpyDeviceToHost);
     if (!verbose) {
