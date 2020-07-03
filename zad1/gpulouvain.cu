@@ -341,8 +341,8 @@ void contract(const uint32_t V_MAX_IDX,
     // compressedCom <=> `com` from paper
     cudaDeviceSynchronize();
 
-    printf("[C]: size[1]: %ul, deg[1]: %ul\n", commSize[1], commDegree[1]);
-    printf("[C]: size[5]: %ul, deg[5]: %ul\n", commSize[5], commDegree[5]);
+    printf("[C]: size[1]: %lu, deg[1]: %lu\n", commSize[1], commDegree[1]);
+    printf("[C]: size[5]: %lu, deg[5]: %lu\n", commSize[5], commDegree[5]);
     printf("[C]: size[MAX]: %d, deg[MAX]: %d\n", commSize[V_MAX_IDX], commDegree[V_MAX_IDX]);
 
     thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
