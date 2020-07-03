@@ -63,9 +63,9 @@ CUDA_CALLABLE_MEMBER bool HA::insertWithFeedback(KeyValueInt* h1, KeyValueFloat*
             return true;
         } else if (prev == key) {
             atomicAdd(&h2[slot].value, v2);
-            if (h1[slot].value != v1) {
-                printf("UWAGA: chcę %d a był %d\n", v1, h1[slot].value);
-            }
+            // if (h1[slot].value != v1) {
+            //     printf("UWAGA: chcę %d a był %d\n", v1, h1[slot].value);
+            // }
             // assert(h1[slot].value == v1);
             return false;
         }

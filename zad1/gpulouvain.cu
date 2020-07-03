@@ -300,7 +300,8 @@ void compute_comm_neighbors(
             assert(newW[idx0 + myIdx] == 0);
             newE[idx0 + myIdx] = hashComm[i].value;
 
-            assert(hashWeight[i].value != 0.0);
+            assert(hashArrayNull != hashComm[i].value);
+            // assert(hashWeight[i].value != 0.0);
             newW[idx0 + myIdx] = hashWeight[i].value;
             
             // if (myComm == hashComm[i].value) {
