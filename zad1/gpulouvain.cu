@@ -189,7 +189,7 @@ void compute_comm_neighbors(
         uint32_t myNode = compressedComm[nodeIdx]; // common for whole warp
         // myNode :: oldVNum 
         uint32_t myNeighNum = V[myNode + 1] - V[myNode]; // :: size(oldVnum)
-        assert(myNeighNum == WTF[nodeIdx + 1] - WTF[nodeIdx]);
+        // assert(myNeighNum == WTF[nodeIdx + 1] - WTF[nodeIdx]);
         
         for (int i = 0; i < ceil(((float) myNeighNum) / 32.0); i++) {
             uint32_t myEdgeIdx = threadIdx.x + i * 32; // :: Epos
@@ -284,15 +284,19 @@ void compute_comm_neighbors(
     // assert(mask == FULL_MASK);
     uint32_t idx0 = edgePos[myComm];
     
-    if (threadIdx.x != 0)
-        return;
+    // if (threadIdx.x != 0)
+    //     return;
+    __syncthreads();
+
     // TODO
     // this should be performed by all warps, but there were unknown
     // problems with this
-    // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
-    for (int i = 0; i < hasharrayEntries; i++) {
+    for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
+    // for (int i = 0; i < hasharrayEntries; i++) {
         if (hashComm[i].key != hashArrayNull) {
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
+            assert(newE[idx0 + myIdx] == 0);
+            assert(newW[idx0 + myIdx] == 0);
             newE[idx0 + myIdx] = hashComm[i].value;
             
             if (myComm == hashComm[i].value) {
@@ -473,8 +477,6 @@ void contract(const uint32_t V_MAX_IDX,
             uint32_t TOTAL_HASHARRAY_ENTRIES = (2 * hashArrayEntriesPerComm) * binNodesNum;
 
             HANDLE_ERROR(cudaMalloc((void**)&globalHashArrayPtr, sizeof(KeyValueFloat) * TOTAL_HASHARRAY_ENTRIES));
-            // std::memset(globalHashArrayPtr, '\0', sizeof(KeyValueFloat) * TOTAL_HASHARRAY_ENTRIES);
-            // HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrayPtr, globalHashArrayPtr, 0));
 
         } else {
             hashArrayEntriesPerComm = next_2_pow(degUpperBound); // TODO customize this
