@@ -384,6 +384,7 @@ void contract(const uint32_t V_MAX_IDX,
 
     computeWTF(V, compressedComm, WTF);
 
+    print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true);
     print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF", true);
     print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos", true);
 
