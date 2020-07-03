@@ -326,6 +326,11 @@ void contract(const uint32_t V_MAX_IDX,
     thrust::sequence(commSeq.begin(), commSeq.end());
 
     auto pair = getBlockThreadSplit(V_MAX_IDX);
+
+    printf("[C]: size[1]: %lu, deg[1]: %lu\n", commSize[1], commDegree[1]);
+    printf("[C]: size[5]: %lu, deg[5]: %lu\n", commSize[5], commDegree[5]);
+    printf("[C]: size[MAX]: %d, deg[MAX]: %d\n", commSize[V_MAX_IDX], commDegree[V_MAX_IDX]);
+
     compute_size_degree<<<pair.first, pair.second>>> (V_MAX_IDX, V, comm, RAW(commSize), RAW(commDegree));
 
     cudaDeviceSynchronize();
