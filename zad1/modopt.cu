@@ -837,6 +837,7 @@ float reassign_communities(
         // print_comm_assignment(V_MAX_IDX, comm);
 
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
+        print_DEBUG_stat(mod0, mod1);
 
         maxMod = max(maxMod, mod1);
 
@@ -882,8 +883,6 @@ float reassign_communities(
             // return mod1; // TODO debug  remove, up to first constract
             // break; // TODO, poprawić contract
         } else {
-            
-            print_DEBUG_stat(mod0, mod1);
             changedSth = true;
             printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
             mod0 = mod1;
