@@ -339,8 +339,8 @@ void contract(const uint32_t V_MAX_IDX,
 
     auto pair = getBlockThreadSplit(V_MAX_IDX);
 
-    printf_contract(V_MAX_IDX, commSize, "commSize");
-    printf_contract(V_MAX_IDX, commDegree, "commDegree");
+    printf_contract(V_MAX_IDX, RAW(commSize), "commSize");
+    printf_contract(V_MAX_IDX, RAW(commDegree), "commDegree");
 
     compute_size_degree<<<pair.first, pair.second>>> (V_MAX_IDX, V, comm, RAW(commSize), RAW(commDegree));
 
