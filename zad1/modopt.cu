@@ -724,6 +724,11 @@ float computeModAndAC(uint32_t V_MAX_IDX,
 }
 
 
+// __host__
+// void print_DEBUG_mod() {
+
+// }
+
 __host__ 
 float reassign_communities(
                         const uint32_t V_MAX_IDX,
@@ -843,6 +848,9 @@ float reassign_communities(
                 contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
                 changedSth = false;
                 printf("\n*****************                 CONTRACT2                ****************\n");
+
+                float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
+                printf("MOD CONTRCT: %f\n", mod_contract);
             }
         } else if (mod1 - mod0 < minGain) {
             contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
