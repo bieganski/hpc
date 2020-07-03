@@ -62,8 +62,8 @@ CUDA_CALLABLE_MEMBER bool HA::insertWithFeedback(KeyValueInt* h1, KeyValueFloat*
             atomicAdd(&h2[slot].value, v2);
             return true;
         } else if (prev == key) {
-            assert(h1[slot].value == v1);
             atomicAdd(&h2[slot].value, v2);
+            assert(h1[slot].value == v1);
             return false;
         }
         slot = (slot + 1) & (table_size - 1);
