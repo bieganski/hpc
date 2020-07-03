@@ -361,7 +361,7 @@ void contract(const uint32_t V_MAX_IDX,
     // compressedCom <=> `com` from paper
     cudaDeviceSynchronize();
 
-    print_DEBUG(V_MAX_IDX, V, "V", true);
+    print_DEBUG(V_MAX_IDX + 1, V, "V", true);
     print_DEBUG(V[V_MAX_IDX + 1] - 1, E, "E", true);
     print_DEBUG(V_MAX_IDX, comm, "comm", true);
     
