@@ -885,8 +885,9 @@ float reassign_communities(
         } else {
             changedSth = true;
             printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
-            mod0 = mod1;
+            // mod0 = mod1;
         }
+        mod0 = mod1;
     }
 
     return mod1;
