@@ -178,6 +178,41 @@ void compute_comm_neighbors(
     uint32_t offset = WTF[firstNodePtrIncl];
 
     bool finish = false; // cannot use early return because of usage of warp-level primitives
+
+    uint32_t nodeIdx = start + 0;
+    while(true) {
+        uint32_t myNode = -1;
+        // uint32_t edgeIdx = -1;
+
+        if (nodeIdx >= lastNodePtrExcl) {
+            break;
+        }
+
+        myNode = compressedComm[nodeIdx]; // common for whole warp
+        uint32_t myNeighNum = V[myNode + 1] - V[myNode];
+        assert(myNeighNum == WTF[nodeIdx + 1] - WTF[nodeIdx]);
+        
+        for (int i = 0; i < ceil(((float) myNeighNum) / 32.0); i++) {
+            uint32_t myEdge = threadIdx.x + i * 32;
+
+            if (myEdge >= myNeighNum) {
+                break;
+            }
+
+            if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdge], comm[myEdge], W[V[myNode] + edgeIdx], hasharrayEntries) ) {
+                insertedByMe++;
+            } else {
+                ;
+            }
+        }
+
+        nodeIdx++;
+    }
+
+    __syncthreads();
+
+
+    /*
     while(true) {
 
         // looking for my node and edge
@@ -210,6 +245,8 @@ void compute_comm_neighbors(
 
         myEdgePtr += WARP_SIZE;
     } // while(true)
+    */
+
 
     // now, compute number of totally inserted in this warp's community
     
@@ -229,6 +266,7 @@ void compute_comm_neighbors(
     int myEdgePtr0 = threadIdx.x;
     if (myEdgePtr0 == 0) {
         // WARNING: we use old community id, because we already know free E indices!
+        printf("DEBUG: insertedByWarp: %d\n", commNeighborsNum);
         newV[myComm] = commNeighborsNum; // will be computed prefix sum on it later
     }
 
@@ -237,6 +275,7 @@ void compute_comm_neighbors(
     
     if (threadIdx.x != 0)
         return;
+    printf("dzialam.\n");
     // TODO
     // this should be performed by all warps, but there were unknown
     // problems with this
