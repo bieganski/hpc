@@ -301,7 +301,7 @@ void recompute_globalCommAssignment(
 }
 
 
-__host__
+
 template <typename T>
 void printf_contract(uint32_t size, T* arr, const char* name) {
     T* mem = (T*) malloc(size * sizeof(T));
