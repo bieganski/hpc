@@ -181,25 +181,37 @@ void compute_comm_neighbors(
 
     uint32_t nodeIdx = start + 0;
     while(true) {
-        uint32_t myNode = -1;
-        // uint32_t edgeIdx = -1;
 
         if (nodeIdx >= lastNodePtrExcl) {
             break;
         }
 
-        myNode = compressedComm[nodeIdx]; // common for whole warp
-        uint32_t myNeighNum = V[myNode + 1] - V[myNode];
+        uint32_t myNode = compressedComm[nodeIdx]; // common for whole warp
+        // myNode :: oldVNum 
+        uint32_t myNeighNum = V[myNode + 1] - V[myNode]; // :: size(oldVnum)
         assert(myNeighNum == WTF[nodeIdx + 1] - WTF[nodeIdx]);
         
         for (int i = 0; i < ceil(((float) myNeighNum) / 32.0); i++) {
-            uint32_t myEdge = threadIdx.x + i * 32;
+            uint32_t myEdgeIdx = threadIdx.x + i * 32; // :: Epos
 
-            if (myEdge >= myNeighNum) {
+            if (myEdgeIdx >= myNeighNum) {
                 break;
             }
 
-            if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdge], comm[myEdge], W[V[myNode] + edgeIdx], hasharrayEntries) ) {
+            // V :: Vnum -> Epos
+            // E :: Epos -> Vnum
+            // W :: Epos -> W(Vnum)
+            // comm :: Vnum -> Cnum
+            // CC :: NVnum -> VNum
+            // edgePos :: NCnum -> NEpos
+
+            // WTF :: NVnum -> size(VNum)
+
+            uint32_t myEdgeVnum = E[V[myNode] + myEdgeIdx];
+            uint32_t myEdgeWeight = W[V[myNode] + myEdgeIdx];
+
+            if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdgeVnum], comm[myEdgeVnum], 
+                    myEdgeWeight, hasharrayEntries) ) {
                 insertedByMe++;
             } else {
                 ;

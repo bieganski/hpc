@@ -53,6 +53,8 @@ CUDA_CALLABLE_MEMBER uint32_t HA::insertInt(KeyValueInt* hashtable, uint32_t key
 CUDA_CALLABLE_MEMBER bool HA::insertWithFeedback(KeyValueInt* h1, KeyValueFloat* h2, uint32_t key, uint32_t v1, float v2, uint32_t table_size) {
     uint32_t slot = hash(key, table_size);
 
+    assert(next_2_pow(table_size) == table_size);
+
     while (true) {
         uint32_t prev = atomicCAS(&h1[slot].key, hashArrayNull, key);
         if (prev == hashArrayNull) {
