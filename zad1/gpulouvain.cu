@@ -311,8 +311,8 @@ void contract(const uint32_t V_MAX_IDX,
                           thrust::device_vector<uint32_t>& globalCommAssignment) {
 
     // TODO przenieśc je wyżej, żeby alokować tylko raz
-    thrust::device_vector<uint32_t> commSize(V_MAX_IDX + 1, 0);
-    thrust::device_vector<uint32_t> commDegree(V_MAX_IDX + 1, 0);
+    thrust::device_vector<uint32_t> commSize(V_MAX_IDX + 1, (uint32_t) 0);
+    thrust::device_vector<uint32_t> commDegree(V_MAX_IDX + 1, (uint32_t) 0);
     thrust::device_vector<uint32_t> edgePos(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> newID(V_MAX_IDX + 1, 0);
     thrust::device_vector<uint32_t> vertexStart(V_MAX_IDX + 2, 0);
