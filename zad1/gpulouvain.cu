@@ -162,7 +162,6 @@ void compute_comm_neighbors(
     if (globalHashtables == nullptr) {
         hasharr_ptr = hashtables;
     } else {
-        int tmp = (int) (hasharr_ptr - (char*)globalHashtables);
         hasharr_ptr = (char*) (&globalHashtables[myCommPtr * (2 * hasharrayEntries)]);
     }
 
@@ -246,6 +245,7 @@ void compute_comm_neighbors(
         if (hashComm[i].key != hashArrayNull) {
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             newE[idx0 + myIdx] = hashComm[i].value;
+            
             if (myComm == hashComm[i].value) {
                 // TODO self-loop, should it be halved?
                 newW[idx0 + myIdx] = hashWeight[i].value; //  / 2.0;
@@ -357,6 +357,10 @@ void contract(const uint32_t V_MAX_IDX,
     cudaMemcpyFromSymbol(contractBinsHost, CONTRACT_BINS, sizeof(CONTRACT_BINS), 0, cudaMemcpyDeviceToHost);
 
     computeWTF(V, compressedComm, WTF);
+
+    printf("WTF[1]: %d, edgePos[1]: %d\n", WTF[1], edgePos[1]);
+    printf("WTF[5]: %d, edgePos[5]: %d\n", WTF[5], edgePos[5]);
+    printf("WTF[MAX]: %d, edgePos[MAX]: %d\n", WTF[V_MAX_IDX], edgePos[V_MAX_IDX]);
 
     uint32_t E_size = V[V_MAX_IDX + 1];
     // Each call to `compute_comm _neighbors` kernel updates part of these values
