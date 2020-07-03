@@ -303,11 +303,19 @@ void recompute_globalCommAssignment(
 
 
 template <typename T>
-void print_DEBUG(uint32_t size, T* arr, const char* name) {
+void print_DEBUG(uint32_t max_idx, T* arr, const char* name, verbose = false) {
     T* mem = (T*) malloc(size * sizeof(T));
     cudaMemcpy(mem, arr, size * sizeof(T), cudaMemcpyDeviceToHost);
-    printf("[C]: %s[1]: %d\n", name, mem[1]);
-    printf("[C]: %s[5]: %d\n", name, mem[5]);
+    if (!verbose) {
+        printf("[C]: %s[1]: %d\n", name, mem[1]);
+        printf("[C]: %s[5]: %d\n", name, mem[max_idx]);
+    } else {
+        printf("[C]: %s[5]: ", name);
+        for (int i = 1; i <= max_idx; i++) {
+            printf(" %d", mem[i]);
+        }
+    }
+    
     // printf("[C]: %s[MAX]: %d\n", name, mem[size - 1]);
     free(mem);
 }
@@ -354,8 +362,8 @@ void contract(const uint32_t V_MAX_IDX,
     // compressedCom <=> `com` from paper
     cudaDeviceSynchronize();
 
-    print_DEBUG(V_MAX_IDX, RAW(commSize), "commSize");
-    print_DEBUG(V_MAX_IDX, RAW(commDegree), "commDegree");
+    print_DEBUG(V_MAX_IDX, RAW(commSize), "commSize", true);
+    print_DEBUG(V_MAX_IDX, RAW(commDegree), "commDegree", true);
 
     thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
 
