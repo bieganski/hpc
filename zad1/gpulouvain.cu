@@ -303,7 +303,7 @@ void recompute_globalCommAssignment(
 
 
 template <typename T>
-void printf_contract(uint32_t size, T* arr, const char* name) {
+void print_DEBUG(uint32_t size, T* arr, const char* name) {
     T* mem = (T*) malloc(size * sizeof(T));
     cudaMemcpy(mem, arr, size * sizeof(T), cudaMemcpyDeviceToHost);
     printf("[C]: %s[1]: %d\n", name, mem[1]);
@@ -339,9 +339,6 @@ void contract(const uint32_t V_MAX_IDX,
 
     auto pair = getBlockThreadSplit(V_MAX_IDX);
 
-    printf_contract(V_MAX_IDX, RAW(commSize), "commSize");
-    printf_contract(V_MAX_IDX, RAW(commDegree), "commDegree");
-
     compute_size_degree<<<pair.first, pair.second>>> (V_MAX_IDX, V, comm, RAW(commSize), RAW(commDegree));
 
     cudaDeviceSynchronize();
@@ -357,9 +354,8 @@ void contract(const uint32_t V_MAX_IDX,
     // compressedCom <=> `com` from paper
     cudaDeviceSynchronize();
 
-    printf("[C]: size[1]: %lu, deg[1]: %lu\n", commSize[1], commDegree[1]);
-    printf("[C]: size[5]: %lu, deg[5]: %lu\n", commSize[5], commDegree[5]);
-    printf("[C]: size[MAX]: %d, deg[MAX]: %d\n", commSize[V_MAX_IDX], commDegree[V_MAX_IDX]);
+    print_DEBUG(V_MAX_IDX, RAW(commSize), "commSize");
+    print_DEBUG(V_MAX_IDX, RAW(commDegree), "commDegree");
 
     thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
 
@@ -376,9 +372,8 @@ void contract(const uint32_t V_MAX_IDX,
 
     computeWTF(V, compressedComm, WTF);
 
-    printf("[C]: WTF[1]: %d, edgePos[1]: %d\n", WTF[1], edgePos[1]);
-    printf("[C]: WTF[5]: %d, edgePos[5]: %d\n", WTF[5], edgePos[5]);
-    printf("[C]: WTF[MAX]: %d, edgePos[MAX]: %d\n", WTF[V_MAX_IDX], edgePos[V_MAX_IDX]);
+    print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF");
+    print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos");
 
     uint32_t E_size = V[V_MAX_IDX + 1];
     // Each call to `compute_comm _neighbors` kernel updates part of these values
