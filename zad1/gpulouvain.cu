@@ -303,7 +303,7 @@ void recompute_globalCommAssignment(
 
 
 template <typename T>
-void print_DEBUG(uint32_t max_idx, T* arr, const char* name, verbose = false) {
+void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = false) {
     T* mem = (T*) malloc(size * sizeof(T));
     cudaMemcpy(mem, arr, size * sizeof(T), cudaMemcpyDeviceToHost);
     if (!verbose) {
