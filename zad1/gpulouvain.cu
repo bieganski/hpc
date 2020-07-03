@@ -472,15 +472,14 @@ void contract(const uint32_t V_MAX_IDX,
             shmSize = 0;
             uint32_t TOTAL_HASHARRAY_ENTRIES = (2 * hashArrayEntriesPerComm) * binNodesNum;
 
-            HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrayPtr, sizeof(KeyValueFloat) * TOTAL_HASHARRAY_ENTRIES, cudaHostAllocDefault));
-            std::memset(globalHashArrayPtr, '\0', sizeof(KeyValueFloat) * TOTAL_HASHARRAY_ENTRIES);
-            HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrayPtr, globalHashArrayPtr, 0));
+            HANDLE_ERROR(cudaMalloc((void**)&globalHashArrayPtr, sizeof(KeyValueFloat) * TOTAL_HASHARRAY_ENTRIES));
+            // std::memset(globalHashArrayPtr, '\0', sizeof(KeyValueFloat) * TOTAL_HASHARRAY_ENTRIES);
+            // HANDLE_ERROR(cudaHostGetDevicePointer(&globalHashArrayPtr, globalHashArrayPtr, 0));
 
         } else {
             hashArrayEntriesPerComm = next_2_pow(degUpperBound); // TODO customize this
 
             shmSize = sizeof(KeyValueInt) * (2 * hashArrayEntriesPerComm); // one block per community
-
             assert(shmSize <= SHARED_MEM_SIZE);
 
             globalHashArrayPtr = nullptr;
@@ -506,6 +505,10 @@ void contract(const uint32_t V_MAX_IDX,
         cudaDeviceSynchronize();        
 
         it0 = it; // it0 points to first node that wasn't processed yet
+
+        if (globalHashArrayPtr != nullptr) {
+            HANDLE_ERROR(cudaFree(globalHashArrayPtr));
+        }
     }
 
     thrust::exclusive_scan(newV.begin(), newV.end(), newV.begin());
