@@ -688,8 +688,8 @@ float __computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_
     auto tmp = thrust::device_vector<float>(V_MAX_IDX + 1);
     thrust::transform(ac, ac + V_MAX_IDX + 1, tmp.begin(), thrust::square<float>());
     float sum = thrust::reduce(tmp.begin(), tmp.end(), (double) 0, thrust::plus<double>());
-    printf("MOD ACsum: %f\n", sum);
-    printf("MOD: sum ei: %f\n", ei_to_Ci_sum);
+    fprintf(stderr, "MOD ACsum: %f\n", sum);
+    fprintf(stderr, "MOD: sum ei: %f\n", ei_to_Ci_sum);
 
     return ei_to_Ci_sum / (2 * m) - ( sum / (4 * m * m));
 }
