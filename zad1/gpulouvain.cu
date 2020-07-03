@@ -339,9 +339,11 @@ void contract(const uint32_t V_MAX_IDX,
             RAW(commSize), RAW(vertexStart), RAW(tmpCounter), RAW(compressedComm));
 
     // compressedCom <=> `com` from paper
-
-
     cudaDeviceSynchronize();
+
+    printf("[C]: size[1]: %d, deg[1]: %d\n", commSize[1], comDegree[1]);
+    printf("[C]: size[5]: %d, deg[5]: %d\n", commSize[5], comDegree[5]);
+    printf("[C]: size[MAX]: %d, deg[MAX]: %d\n", commSize[V_MAX_IDX], comDegree[V_MAX_IDX]);
 
     thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
 
@@ -358,9 +360,9 @@ void contract(const uint32_t V_MAX_IDX,
 
     computeWTF(V, compressedComm, WTF);
 
-    printf("WTF[1]: %d, edgePos[1]: %d\n", WTF[1], edgePos[1]);
-    printf("WTF[5]: %d, edgePos[5]: %d\n", WTF[5], edgePos[5]);
-    printf("WTF[MAX]: %d, edgePos[MAX]: %d\n", WTF[V_MAX_IDX], edgePos[V_MAX_IDX]);
+    printf("[C]: WTF[1]: %d, edgePos[1]: %d\n", WTF[1], edgePos[1]);
+    printf("[C]: WTF[5]: %d, edgePos[5]: %d\n", WTF[5], edgePos[5]);
+    printf("[C]: WTF[MAX]: %d, edgePos[MAX]: %d\n", WTF[V_MAX_IDX], edgePos[V_MAX_IDX]);
 
     uint32_t E_size = V[V_MAX_IDX + 1];
     // Each call to `compute_comm _neighbors` kernel updates part of these values
