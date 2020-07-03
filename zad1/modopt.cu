@@ -724,10 +724,11 @@ float computeModAndAC(uint32_t V_MAX_IDX,
 }
 
 
-// __host__
-// void print_DEBUG_mod() {
+void print_DEBUG_stat(float oldmod, float newmod) {
+    // liczba wierzcholkow, liczba krawedzi, liczba niezerowych community po wykonaniu iteracji, mod gain przed iteracja, mod gain po iteracji
+    fprintf(stderr, "b: %f a: %f\n", oldmod, newmod);
+}
 
-// }
 
 __host__ 
 float reassign_communities(
@@ -851,9 +852,12 @@ float reassign_communities(
 
                 float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
                 printf("MOD CONTRCT: %f\n", mod_contract);
+                fprintf(stderr, "\n=======\n");
+                // print_DEBUG_stat(mod1, mod_contract);
             }
         } else if (mod1 - mod0 < minGain) {
             contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
+            fprintf(stderr, "\n=======\n");
             changedSth = false;
             printf("\n*****************                 CONTRACT                 ****************\n");
             // print_comm_assignment(V_MAX_IDX, comm);
@@ -869,6 +873,8 @@ float reassign_communities(
             float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
             printf("MOD CONTRCT: %f\n", mod_contract);
 
+            // print_DEBUG_stat(mod1, mod_contract);
+
             // if (mod1 - mod_contract > FLT_EPSILON) {
             //     printf("MOD ZLE: KONCZE\n");
             // }
@@ -876,6 +882,8 @@ float reassign_communities(
             // return mod1; // TODO debug  remove, up to first constract
             // break; // TODO, poprawić contract
         } else {
+            
+            print_DEBUG_stat(mod0, mod1);
             changedSth = true;
             printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
             mod0 = mod1;
