@@ -307,7 +307,10 @@ void compute_comm_neighbors(
             }
         }
     }
-    assert(freeIndices[myComm] == newV[myComm]);
+    if (freeIndices[myComm] != newV[myComm]) {
+        printf("LOL: %d, %d \n", freeIndices[myComm] , newV[myComm]);
+    }
+    // assert(freeIndices[myComm] == newV[myComm]);
 }
 
 
