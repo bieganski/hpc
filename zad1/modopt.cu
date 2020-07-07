@@ -319,7 +319,7 @@ void reassign_huge_nodes(
         }
 
         float deltaModRaw = comm[j] >= comm[i] ? 
-            -(1 << 12) : 
+            -(1 << 18) : 
             k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
 
         uint32_t newCommIdx = comm[j];
