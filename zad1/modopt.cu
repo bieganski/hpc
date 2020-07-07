@@ -382,13 +382,13 @@ void reassign_huge_nodes(
 
     __syncwarp();
     
-    float ei2cival = ei2ciidx == 0 ? 0.0 : hashWeight[ei2ciidx];
+    float eitocival = ei2ciidx == 0 ? 0.0 : hashWeight[ei2ciidx];
 
     for (int offset = 32 / 2; offset > 0; offset /= 2) {
         ei2cival = max(ei2cival, __shfl_down_sync(FULL_MASK, ei2cival, offset));
     }
 
-    assert(ei2cival >= 0.0);
+    assert(eitocival >= 0.0);
 
     float myBestGain = 0.0;
     uint32_t myBestComm = 0;
@@ -403,8 +403,10 @@ void reassign_huge_nodes(
         if (comm[j] > comm[i])
             continue; // WIELKIE TODO
 
+        uint32_t mySlot = HA::insertInt(hashComm, comm[j], 0, hasharrayEntries); // dummy one
+
         float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
-        gain += ei2cival / m;
+        gain += eitocival / m;
 
         if (gain <= 0.0)
             continue;
@@ -426,8 +428,8 @@ void reassign_huge_nodes(
     for (int offset = 32 / 2; offset > 0; offset /= 2) {
         float bestGain = __shfl_down_sync(FULL_MASK, myBestGain, offset);
         float bestComm = __shfl_down_sync(FULL_MASK, myBestComm, offset);
-            if (bestDelta > bestDeltaGlobal) {
-                bestDeltaGlobal = bestDelta;
+            if (bestGain > bestGainGlobal) {
+                bestGainGlobal = bestGain;
                 bestCommGlobal = bestComm;
             }
     }
