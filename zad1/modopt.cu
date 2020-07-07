@@ -271,115 +271,37 @@ void reassign_huge_nodes(
     int cntr = 0;
     uint32_t edge_base = edge_ptr;
     // TODO synce
-    while (true) {
-
-        uint32_t EDGE = edge_base + cntr * stride;
-        if (V[i + 1] - V[i] -1 < EDGE) {
-            break;
-        }
-        
-        // if (maxDegree <= 1024) {
-        //     // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
-        //     assert(cntr == 0); // only one iteration needed
-        // } else {
-        //     ; // assert(stride == 1024);
-        // }
-
-        uint32_t j = E[V[i] + EDGE]; // my neighbor
-        if (comm[j] == 0) {
-            printf("DUPA: i=%d, j=%d", i, j);
-        }
-
-        uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
-        float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
-
-        // if (i == 2) {
-        //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
-        // }
-
-        __syncwarp();
-
-
-        float loop = i == j ? W[V[i] + EDGE] : 0;
-        ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
-
-        atomicMax(glob_loop, float_to_int(loop));
-        atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
-
-        __syncthreads();
-
-        if (edge_base == 0) {
-            loop = int_to_float(*glob_loop);
-            ei_to_Ci = int_to_float(*glob_ei_to_Ci);
-            // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
-        }
-
-        if (edge_base == 0) {
-            ei_to_Ci -= loop;
-        }
-
-        float deltaModRaw = comm[j] >= comm[i] ? 
-            -(1 << 18) : 
-            k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
-
-        uint32_t newCommIdx = comm[j];
-
-        // Now, we must perform reduction on deltaMod values, to find best newCommIdx.
-        // It's kinda hacky, cause in case of obtaining two identical deltaMod values,
-        // we choose community with lower idx. It is accomplished by finding maximal value
-        // of pair (int(deltaMod), -newCommIdx). We implement it using concatenation
-        // of two unsigned values (obtained by order-preserving bijection from floats).
-        assert(newCommIdx != UINT32_MAX);
-        assert(newCommIdx != 0);
-        uint32_t newCommIdxRepr = -1 - newCommIdx; // bits flipped
-
-        // uint32_t newCommIdxRepr = __brev(newCommIdx);
-
-        assert(-1 - newCommIdxRepr == newCommIdx);
-
-        // if (newCommIdxRepr == 0) {
-        //     printf("FAK: %llu\n", newCommIdx);
-        // }
-
-        // LOL
-        // printf("deltaMod: %f, toInt: %d, to uint: %u\n", deltaModRaw, float_to_int(deltaModRaw), int_to_uint(float_to_int(deltaModRaw)));
-        // printf("deltaMod: %f, toInt: %d, to uint: %u, TO RAW::::%f\n", deltaModRaw, float_to_int(deltaModRaw), float_to_uint(deltaModRaw), uint_to_float(float_to_uint(deltaModRaw)));
-        // printf("comm idx repr: %u\n", newCommIdxRepr);
-
-        // LOL
-        // uint64_t deltaMod = (((uint64_t) int_to_uint(float_to_int(deltaModRaw))) << 31) + newCommIdxRepr;
-        deltaMod = (((uint64_t) float_to_uint(deltaModRaw)) << 31) | newCommIdxRepr;
-
-        assert((uint32_t)deltaMod != 0);
-
-        // printf("moj deltamod: %llu oraz test: \n", deltaMod);
-        assert(sizeof(uint64_t) == sizeof(unsigned long long int));
-
-        atomicMax((unsigned long long int*) glob_deltaMod, (unsigned long long int)deltaMod);
-
-        __syncthreads();
-
-        cntr++;
-    }
-
-
-
-
     // while (true) {
+
     //     uint32_t EDGE = edge_base + cntr * stride;
     //     if (V[i + 1] - V[i] -1 < EDGE) {
     //         break;
     //     }
+        
+    //     // if (maxDegree <= 1024) {
+    //     //     // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
+    //     //     assert(cntr == 0); // only one iteration needed
+    //     // } else {
+    //     //     ; // assert(stride == 1024);
+    //     // }
 
-    //     uint32_t j = E[V[i] + EDGE];
+    //     uint32_t j = E[V[i] + EDGE]; // my neighbor
+    //     if (comm[j] == 0) {
+    //         printf("DUPA: i=%d, j=%d", i, j);
+    //     }
 
     //     uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
-    //     HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
-    // }
-        
+    //     float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
+
+    //     // if (i == 2) {
+    //     //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
+    //     // }
+
+    //     __syncwarp();
+
 
     //     float loop = i == j ? W[V[i] + EDGE] : 0;
-    //     float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+    //     ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
 
     //     atomicMax(glob_loop, float_to_int(loop));
     //     atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
@@ -397,24 +319,197 @@ void reassign_huge_nodes(
     //     }
 
     //     float deltaModRaw = comm[j] >= comm[i] ? 
-    //         -(1 << 5) : 
+    //         -(1 << 18) : 
     //         k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
 
     //     uint32_t newCommIdx = comm[j];
 
-    //     // NOWY KOD
-    //     uint32_t bestCommGlobal = comm[j];
-    //     float bestDeltaGlobal = 0.0;
-    //     for (int offset = 32 / 2; offset > 0; offset /= 2) {
-    //         float bestDelta = __shfl_down_sync(FULL_MASK, bestDeltaGlobal, offset);
-    //         float bestComm = __shfl_down_sync(FULL_MASK, bestCommGlobal, offset);
-    //         if (bestDelta > bestDeltaGlobal) {
-    //             bestDeltaGlobal = bestDelta;
-    //             bestCommGlobal = bestComm;
-    //         }
-    //     }
+    //     // Now, we must perform reduction on deltaMod values, to find best newCommIdx.
+    //     // It's kinda hacky, cause in case of obtaining two identical deltaMod values,
+    //     // we choose community with lower idx. It is accomplished by finding maximal value
+    //     // of pair (int(deltaMod), -newCommIdx). We implement it using concatenation
+    //     // of two unsigned values (obtained by order-preserving bijection from floats).
+    //     assert(newCommIdx != UINT32_MAX);
+    //     assert(newCommIdx != 0);
+    //     uint32_t newCommIdxRepr = -1 - newCommIdx; // bits flipped
 
+    //     // uint32_t newCommIdxRepr = __brev(newCommIdx);
+
+    //     assert(-1 - newCommIdxRepr == newCommIdx);
+
+    //     // if (newCommIdxRepr == 0) {
+    //     //     printf("FAK: %llu\n", newCommIdx);
+    //     // }
+
+    //     // LOL
+    //     // printf("deltaMod: %f, toInt: %d, to uint: %u\n", deltaModRaw, float_to_int(deltaModRaw), int_to_uint(float_to_int(deltaModRaw)));
+    //     // printf("deltaMod: %f, toInt: %d, to uint: %u, TO RAW::::%f\n", deltaModRaw, float_to_int(deltaModRaw), float_to_uint(deltaModRaw), uint_to_float(float_to_uint(deltaModRaw)));
+    //     // printf("comm idx repr: %u\n", newCommIdxRepr);
+
+    //     // LOL
+    //     // uint64_t deltaMod = (((uint64_t) int_to_uint(float_to_int(deltaModRaw))) << 31) + newCommIdxRepr;
+    //     deltaMod = (((uint64_t) float_to_uint(deltaModRaw)) << 31) | newCommIdxRepr;
+
+    //     assert((uint32_t)deltaMod != 0);
+
+    //     // printf("moj deltamod: %llu oraz test: \n", deltaMod);
+    //     assert(sizeof(uint64_t) == sizeof(unsigned long long int));
+
+    //     atomicMax((unsigned long long int*) glob_deltaMod, (unsigned long long int)deltaMod);
+
+    //     __syncthreads();
+
+    //     cntr++;
     // }
+
+
+    uint32_t ei2ciidx = 0;
+
+    while (true) {
+        uint32_t EDGE = edge_base + cntr * stride;
+        if (V[i + 1] - V[i] -1 < EDGE) {
+            break;
+        }
+
+        uint32_t j = E[V[i] + EDGE];
+
+        uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
+        HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
+
+        if (comm[j] == comm[i])
+            ei2ciidx = mySlot;
+    }
+
+    __syncwarp();
+    
+    float ei2cival = ei2ciidx == 0 ? 0.0 : hashWeight[ei2ciidx];
+
+    for (int offset = 32 / 2; offset > 0; offset /= 2) {
+        ei2cival = max(ei2cival, __shfl_down_sync(FULL_MASK, ei2cival, offset));
+    }
+
+    assert(ei2cival >= 0.0);
+
+    float myBestGain = 0.0;
+    uint32_t myBestComm = 0;
+    while (true) {
+        uint32_t EDGE = edge_base + cntr * stride;
+        if (V[i + 1] - V[i] -1 < EDGE) {
+            break;
+        }
+
+        uint32_t j = E[V[i] + EDGE];
+
+        if (comm[j] > comm[i])
+            continue; // WIELKIE TODO
+
+        float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+        gain += ei2cival / m;
+
+        if (gain <= 0.0)
+            continue;
+
+        if (gain == myBestGain && comm[j] < myBestComm) {
+            myBestComm = comm[j];
+        } else if (gain > myBestGain) {
+            myBestComm = comm[j];
+            myBestGain = gain;
+        }
+    }
+
+    // myBestComm moze byc 0
+
+    __syncwarp();
+
+    float bestGainGlobal = 0.0;
+    uint32_t bestCommGlobal = 0;
+    for (int offset = 32 / 2; offset > 0; offset /= 2) {
+        float bestGain = __shfl_down_sync(FULL_MASK, myBestGain, offset);
+        float bestComm = __shfl_down_sync(FULL_MASK, myBestComm, offset);
+            if (bestDelta > bestDeltaGlobal) {
+                bestDeltaGlobal = bestDelta;
+                bestCommGlobal = bestComm;
+            }
+    }
+
+    if (edge_base == 0) {
+        if (bestGainGlobal > 0.0) {
+            assert(bestCommGlobal > 0);
+            assert(bestCommGlobal < newComm[i]); // WIELKIE TODO
+            newComm[i] = bestCommGlobal;
+        } else {
+            newComm[i] = comm[i];
+        }
+    }
+
+    return;
+
+
+
+
+
+    if (edge_base == 0) {
+        // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
+        // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
+        float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
+        uint64_t test = *glob_deltaMod;
+        uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
+        // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
+        // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
+
+        float gain = deltaModBest - ei_to_Ci / m;
+
+        if (gain > 0 && commIdxBest < comm[i]) {
+            assert(commIdxBest > 0);
+            newComm[i] = commIdxBest;
+        } else {
+            assert(comm[i] != 0);
+            newComm[i] = comm[i];
+        }
+        atomicAdd(&numChanged, 1);
+    }
+    
+
+    float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+        
+
+        float loop = i == j ? W[V[i] + EDGE] : 0;
+        float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+
+        atomicMax(glob_loop, float_to_int(loop));
+        atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
+
+        __syncthreads();
+
+        if (edge_base == 0) {
+            loop = int_to_float(*glob_loop);
+            ei_to_Ci = int_to_float(*glob_ei_to_Ci);
+            // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
+        }
+
+        if (edge_base == 0) {
+            ei_to_Ci -= loop;
+        }
+
+        float deltaModRaw = comm[j] >= comm[i] ? 
+            -(1 << 5) : 
+            k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+
+        uint32_t newCommIdx = comm[j];
+
+        // NOWY KOD
+        uint32_t bestCommGlobal = comm[j];
+        float bestDeltaGlobal = 0.0;
+        for (int offset = 32 / 2; offset > 0; offset /= 2) {
+            float bestDelta = __shfl_down_sync(FULL_MASK, bestDeltaGlobal, offset);
+            float bestComm = __shfl_down_sync(FULL_MASK, bestCommGlobal, offset);
+            if (bestDelta > bestDeltaGlobal) {
+                bestDeltaGlobal = bestDelta;
+                bestCommGlobal = bestComm;
+            }
+        }
+
+    }
 
     if (edge_base == 0) {
         // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
