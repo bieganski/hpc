@@ -462,6 +462,8 @@ void contract(const uint32_t V_MAX_IDX,
 
     // we don't want empty communities
     auto it0 = thrust::partition(commSeq.begin(), commSeq.end(), partitionGenerator(0));
+
+    printf("MODLOL: empty: %d, all: %d, perc: %2.2f\n", thrust::distance(commSeq, it0), V_MAX_IDX, ((float) thrust::distance(commSeq, it0)) / V_MAX_IDX);
     
     for (int i = 1; ; i++) {
 
