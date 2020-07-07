@@ -606,6 +606,7 @@ float reassign_communities_bin(
 
         bool useGlobalMem = SHARED_MEM_SIZE < shmBytes + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
 
+        printf("MOD binNodesNum: %d\n", binNodesNum);
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             // printf("memsize: %d\n", memsize);
