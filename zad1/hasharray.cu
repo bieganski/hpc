@@ -53,7 +53,7 @@ CUDA_CALLABLE_MEMBER uint32_t HA::insertDummy(KeyValueInt* hashtable, uint32_t k
     uint32_t slot = hash(key, table_size);
 
     while (true) {
-        uint32_t prev = hashtable[slot].key; // atomicCAS(&hashtable[slot].key, hashArrayNull, key);
+        uint32_t prev = hashtable[slot].value; // atomicCAS(&hashtable[slot].key, hashArrayNull, key);
         if (prev == key) {
             return slot;
         }
