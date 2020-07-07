@@ -289,10 +289,6 @@ void compute_comm_neighbors(
     //     return;
     __syncthreads();
 
-    // TODO
-    // this should be performed by all warps, but there were unknown
-    // problems with this
-    // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
     for (int j = 0; j < ceil(((float) hasharrayEntries) / 32); j++) {
         int i = threadIdx.x + j * 32;
         if (i >= hasharrayEntries)
@@ -534,6 +530,11 @@ void contract(const uint32_t V_MAX_IDX,
 
     thrust::device_vector<uint32_t> realNewE(newE.size(), 0);
     thrust::device_vector<float> realNewW(newW.size(), 0);
+
+    float res1 = thrust::reduce(&W[0], &W[E_size]);
+    float res2 = thrust::reduce(newW.begin(), newW.end());
+
+    printf("[CC]: %f -> %f\n", res1, res2);
 
     thrust::copy_if(newE.begin(), newE.end(), realNewE.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
     thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const float& x) {return x != 0;});
