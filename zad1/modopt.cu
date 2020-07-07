@@ -1015,6 +1015,10 @@ float reassign_communities(
 
         printf("MOD1 %f\n", mod1);
 
+        if (mod0 > mod1) {
+            printf("MOD ZLE: %f -> %f\n", mod0, mod1);
+        }
+
         if (abs(mod1 - mod0) <= 0.00001) {
             if (!changedSth) {
                 return maxMod;
