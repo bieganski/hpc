@@ -308,13 +308,13 @@ void reassign_huge_nodes(
 
         __syncthreads();
 
-        if (EDGE == 0) {
+        if (edge_base == 0) {
             loop = int_to_float(*glob_loop);
             ei_to_Ci = int_to_float(*glob_ei_to_Ci);
             // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
         }
 
-        if (EDGE == 0) {
+        if (edge_base == 0) {
             ei_to_Ci -= loop;
         }
 
