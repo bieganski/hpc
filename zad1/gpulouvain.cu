@@ -467,6 +467,7 @@ void contract(const uint32_t V_MAX_IDX,
 
     printf("MODLOL: empty: %d, all: %d, perc: %2.2f\n", thrust::distance(commSeq.begin(), it0), V_MAX_IDX, ((float) thrust::distance(commSeq.begin(), it0)) / V_MAX_IDX);
     
+    bool fin = false;
     for (int i = 1; ; i++) {
 
         auto it = thrust::partition(it0, commSeq.end(), partitionGenerator(i));
@@ -474,6 +475,9 @@ void contract(const uint32_t V_MAX_IDX,
         uint32_t binNodesNum = thrust::distance(it0, it);
         
         if (binNodesNum == 0) {
+            if (fin)
+                break;
+            fin = true;
             continue;
         }
             
