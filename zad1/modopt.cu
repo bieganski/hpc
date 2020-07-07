@@ -374,7 +374,7 @@ void reassign_huge_nodes(
         uint32_t j = E[V[i] + EDGE];
 
         uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
-        assert(hashComm[mySlot].value == comm[j]);
+        assert(hashComm[mySlot].key == comm[j]);
         HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
 
         if (comm[j] == comm[i])
