@@ -297,6 +297,8 @@ void reassign_huge_nodes(
         //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
         // }
 
+        __syncwarp();
+
 
         float loop = i == j ? W[V[i] + EDGE] : 0;
         ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
