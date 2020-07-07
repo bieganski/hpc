@@ -944,7 +944,6 @@ float reassign_communities(
 
     // thrust::copy(ac, (ac + V_MAX_IDX + 1), std::ostream_iterator<float>(std::cout, " "));
 
-    bool fin = false;
     while(true) {
 
         // [0,1) is handled separately (lonely nodes; their modularity impact is 0)
@@ -962,8 +961,8 @@ float reassign_communities(
             if (binNodesNum == 0) {
                 if (fin || i == 12)
                     break;
-                fin = true;
-                continue;
+                else
+                    continue;
             }
 
             uint32_t* binNodes = RAW(it0);
