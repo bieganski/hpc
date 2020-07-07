@@ -1008,6 +1008,12 @@ float reassign_communities(
         // printf("*****************                 ASSIGNMENT      ****************\n");
         // print_comm_assignment(V_MAX_IDX, comm);
 
+        // TU JESTEM
+
+        auto k_pair = getBlockThreadSplit(V_MAX_IDX);
+        compute_k<<<k_pair.first, k_pair.second>>> (V_MAX_IDX, V, E, W, k);
+        cudaDeviceSynchronize();
+        
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
         print_DEBUG_stat(mod0, mod1);
 
