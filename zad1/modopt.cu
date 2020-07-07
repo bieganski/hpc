@@ -404,10 +404,10 @@ void reassign_huge_nodes(
 
         uint32_t j = E[V[i] + EDGE];
 
-        if (comm[j] > comm[i]) {
-            cntr++;
-            continue; // WIELKIE TODO
-        }
+        // if (comm[j] > comm[i]) {
+        //     cntr++;
+        //     continue; // WIELKIE TODO
+        // }
 
         // printf("A\n");
         uint32_t mySlot = HA::insertDummy(hashComm, comm[j], hasharrayEntries);
@@ -430,8 +430,6 @@ void reassign_huge_nodes(
         cntr++;
     }
 
-    // myBestComm moze byc 0
-
     __syncwarp();
 
     float bestGainGlobal = 0.0;
@@ -448,7 +446,7 @@ void reassign_huge_nodes(
     if (edge_base == 0) {
         if (bestGainGlobal > 0.0) {
             assert(bestCommGlobal > 0);
-            assert(bestCommGlobal <= comm[i]); // WIELKIE TODO
+            // assert(bestCommGlobal <= comm[i]); // WIELKIE TODO
             newComm[i] = bestCommGlobal;
         } else {
             newComm[i] = comm[i];
