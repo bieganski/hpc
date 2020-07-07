@@ -529,13 +529,8 @@ void contract(const uint32_t V_MAX_IDX,
         }
     }
 
-    thrust::device_vector<uint32_t> realNewV(newV.size(), 0);
 
-    thrust::copy_if(newV.begin(), newV.end(), realNewV.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
-
-    // thrust::exclusive_scan(newV.begin(), newV.end(), newV.begin());
-
-    thrust::exclusive_scan(realNewV.begin(), realNewV.end(), realNewV.begin());
+    thrust::exclusive_scan(newV.begin(), newV.end(), newV.begin());
 
     thrust::device_vector<uint32_t> realNewE(newE.size(), 0);
     thrust::device_vector<float> realNewW(newW.size(), 0);
@@ -551,8 +546,7 @@ void contract(const uint32_t V_MAX_IDX,
         cudaDeviceSynchronize();
     }
 
-    //tutaj też
-    HANDLE_ERROR(cudaMemcpy((void*)V, (void*)RAW(realNewV), realNewV.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    HANDLE_ERROR(cudaMemcpy((void*)V, (void*)RAW(newV), newV.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy((void*)E, (void*)RAW(realNewE), realNewE.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy((void*)W, (void*)RAW(realNewW), realNewW.size() * sizeof(float), cudaMemcpyDeviceToHost));
     
