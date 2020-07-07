@@ -363,7 +363,7 @@ void reassign_huge_nodes(
     // }
 
 
-    uint32_t ei2ciidx = 0;
+    uint32_t eitociidx = 0;
 
     while (true) {
         uint32_t EDGE = edge_base + cntr * stride;
@@ -377,15 +377,15 @@ void reassign_huge_nodes(
         HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
 
         if (comm[j] == comm[i])
-            ei2ciidx = mySlot;
+            eitociidx = mySlot;
     }
 
     __syncwarp();
     
-    float eitocival = ei2ciidx == 0 ? 0.0 : hashWeight[ei2ciidx];
+    float eitocival = eitociidx == 0 ? 0.0 : hashWeight[eitociidx];
 
     for (int offset = 32 / 2; offset > 0; offset /= 2) {
-        eitocival = max(ei2cival, __shfl_down_sync(FULL_MASK, eitocival, offset));
+        eitocival = max(eitocival, __shfl_down_sync(FULL_MASK, eitocival, offset));
     }
 
     assert(eitocival >= 0.0);
