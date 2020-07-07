@@ -382,7 +382,12 @@ void reassign_huge_nodes(
 
     __syncwarp();
     
-    float eitocival = eitociidx == 0 ? 0.0 : hashWeight[eitociidx];
+    float eitocival;
+    if (eitociidx == 0) {
+        eitocival = 0;
+    } else {
+        eitocival = hashWeight[eitociidx];
+    }
 
     for (int offset = 32 / 2; offset > 0; offset /= 2) {
         eitocival = max(eitocival, __shfl_down_sync(FULL_MASK, eitocival, offset));
