@@ -266,7 +266,7 @@ void reassign_huge_nodes(
     __syncthreads();
 
     uint64_t deltaMod;
-    float ei_to_Ci;
+    // float ei_to_Ci;
 
     int cntr = 0;
     uint32_t edge_base = edge_ptr;
@@ -319,7 +319,7 @@ void reassign_huge_nodes(
         }
 
         float deltaModRaw = comm[j] >= comm[i] ? 
-            -(1 << 5) : 
+            -(1 << 12) : 
             k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
 
         uint32_t newCommIdx = comm[j];
@@ -361,6 +361,60 @@ void reassign_huge_nodes(
 
         cntr++;
     }
+
+
+
+
+    // while (true) {
+    //     uint32_t EDGE = edge_base + cntr * stride;
+    //     if (V[i + 1] - V[i] -1 < EDGE) {
+    //         break;
+    //     }
+
+    //     uint32_t j = E[V[i] + EDGE];
+
+    //     uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
+    //     HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
+    // }
+        
+
+    //     float loop = i == j ? W[V[i] + EDGE] : 0;
+    //     float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+
+    //     atomicMax(glob_loop, float_to_int(loop));
+    //     atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
+
+    //     __syncthreads();
+
+    //     if (edge_base == 0) {
+    //         loop = int_to_float(*glob_loop);
+    //         ei_to_Ci = int_to_float(*glob_ei_to_Ci);
+    //         // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
+    //     }
+
+    //     if (edge_base == 0) {
+    //         ei_to_Ci -= loop;
+    //     }
+
+    //     float deltaModRaw = comm[j] >= comm[i] ? 
+    //         -(1 << 5) : 
+    //         k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+
+    //     uint32_t newCommIdx = comm[j];
+
+    //     // NOWY KOD
+    //     uint32_t bestCommGlobal = comm[j];
+    //     float bestDeltaGlobal = 0.0;
+    //     for (int offset = 32 / 2; offset > 0; offset /= 2) {
+    //         float bestDelta = __shfl_down_sync(FULL_MASK, bestDeltaGlobal, offset);
+    //         float bestComm = __shfl_down_sync(FULL_MASK, bestCommGlobal, offset);
+    //         if (bestDelta > bestDeltaGlobal) {
+    //             bestDeltaGlobal = bestDelta;
+    //             bestCommGlobal = bestComm;
+    //         }
+    //     }
+
+    // }
 
     if (edge_base == 0) {
         // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
