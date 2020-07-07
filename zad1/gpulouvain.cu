@@ -285,15 +285,18 @@ void compute_comm_neighbors(
     // assert(mask == FULL_MASK);
     uint32_t idx0 = edgePos[myComm];
     
-    if (threadIdx.x != 0)
-        return;
-    // __syncthreads();
+    // if (threadIdx.x != 0)
+    //     return;
+    __syncthreads();
 
     // TODO
     // this should be performed by all warps, but there were unknown
     // problems with this
     // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
-    for (int i = 0; i < hasharrayEntries; i++) {
+    for (int j = 0; j < ceil(((float) hasharrayEntries) / 32); j++) {
+        int i = threadIdx.x + j * 32;
+        if (i >= hasharrayEntries)
+            break;
         if (hashComm[i].key != hashArrayNull) {
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             assert(newE[idx0 + myIdx] == 0);
