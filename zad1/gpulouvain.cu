@@ -468,16 +468,16 @@ void contract(const uint32_t V_MAX_IDX,
     printf("MODLOL: empty: %d, all: %d, perc: %2.2f\n", thrust::distance(commSeq.begin(), it0), V_MAX_IDX, ((float) thrust::distance(commSeq.begin(), it0)) / V_MAX_IDX);
     
     for (int i = 1; ; i++) {
+        if (i == 6)
+            break;
 
         auto it = thrust::partition(it0, commSeq.end(), partitionGenerator(i));
 
         uint32_t binNodesNum = thrust::distance(it0, it);
         
-        if (binNodesNum == 0 || i > 6) {
-            if (i == 6)
-                break;
-            else
-                continue;
+        if (binNodesNum == 0) {
+            assert(it0 == it);
+            continue;
         }
             
         // handle only communities with same degree boundary

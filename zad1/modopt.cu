@@ -951,6 +951,8 @@ float reassign_communities(
 
         // for each bin sequentially computes new communities
         for (int i = 1; ; i++) {
+            if (i >= 11)
+                break;
             auto it = thrust::partition(it0, G.end(), partitionGenerator(i));
             uint32_t maxDegree = binsHost[i];
             
@@ -958,11 +960,9 @@ float reassign_communities(
             // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
 
             uint32_t binNodesNum = thrust::distance(it0, it);
-            if (binNodesNum == 0 || i > 12) {
-                if (i == 12)
-                    break;
-                else
-                    continue;
+            if (binNodesNum == 0) {
+                assert(it0 == it);
+                continue;
             }
 
             uint32_t* binNodes = RAW(it0);
