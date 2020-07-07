@@ -958,8 +958,8 @@ float reassign_communities(
             // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
 
             uint32_t binNodesNum = thrust::distance(it0, it);
-            if (binNodesNum == 0) {
-                if (fin || i == 12)
+            if (binNodesNum == 0 || i > 12) {
+                if (i == 12)
                     break;
                 else
                     continue;
