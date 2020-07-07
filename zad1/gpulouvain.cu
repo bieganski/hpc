@@ -475,7 +475,7 @@ void contract(const uint32_t V_MAX_IDX,
         uint32_t binNodesNum = thrust::distance(it0, it);
         
         if (binNodesNum == 0) {
-            if (fin)
+            if (fin || i == 6)
                 break;
             fin = true;
             continue;
