@@ -293,13 +293,11 @@ void compute_comm_neighbors(
     // this should be performed by all warps, but there were unknown
     // problems with this
     // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
-    int test = 0;
     for (int j = 0; j < ceil(((float) hasharrayEntries) / 32); j++) {
         int i = threadIdx.x + j * 32;
         if (i >= hasharrayEntries)
             break;
         if (hashComm[i].key != hashArrayNull) {
-            test++;
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             assert(newE[idx0 + myIdx] == 0);
             assert(newW[idx0 + myIdx] == 0);
@@ -316,15 +314,6 @@ void compute_comm_neighbors(
             //     newW[idx0 + myIdx] = hashWeight[i].value;
             // }
         }
-    }
-
-    for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2) {
-        int lol = __shfl_down_sync(mask, test, offset);
-        test += lol;
-    }
-
-    if (myEdgePtr0 == 0) {
-        assert(test == insertedByMe);
     }
         
     
@@ -347,12 +336,13 @@ void compute_k(const uint32_t V_MAX_IDX,
         return;
     int idx0 = V[tid];
     int num = V[tid + 1] - idx0;
-    k[tid] = 0;
+    float res = 0.0;
     for (int i = 0; i < num; i++) {
-        k[tid] += E[idx0 + i] == tid ? 
+        res += E[idx0 + i] == tid ? 
             W[idx0 + i] //  / 2.0 TODO ?
             : W[idx0 + i];
     }
+    k[tid] = res;
 }
 
 __global__
@@ -539,7 +529,13 @@ void contract(const uint32_t V_MAX_IDX,
         }
     }
 
-    thrust::exclusive_scan(newV.begin(), newV.end(), newV.begin());
+    thrust::device_vector<uint32_t> realNewV(newV.size(), 0);
+
+    thrust::copy_if(newV.begin(), newV.end(), realNewV.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
+
+    // thrust::exclusive_scan(newV.begin(), newV.end(), newV.begin());
+
+    thrust::exclusive_scan(realNewV.begin(), realNewV.end(), realNewV.begin());
 
     thrust::device_vector<uint32_t> realNewE(newE.size(), 0);
     thrust::device_vector<float> realNewW(newW.size(), 0);
@@ -555,7 +551,8 @@ void contract(const uint32_t V_MAX_IDX,
         cudaDeviceSynchronize();
     }
 
-    HANDLE_ERROR(cudaMemcpy((void*)V, (void*)RAW(newV), newV.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
+    //tutaj też
+    HANDLE_ERROR(cudaMemcpy((void*)V, (void*)RAW(realNewV), realNewV.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy((void*)E, (void*)RAW(realNewE), realNewE.size() * sizeof(uint32_t), cudaMemcpyDeviceToHost));
     HANDLE_ERROR(cudaMemcpy((void*)W, (void*)RAW(realNewW), realNewW.size() * sizeof(float), cudaMemcpyDeviceToHost));
     
