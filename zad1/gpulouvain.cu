@@ -364,7 +364,7 @@ void recompute_globalCommAssignment(
 }
 
 
-bool DBG = true;
+bool DBG = false;
 
 template <typename T>
 void print_DEBUG(uint32_t max_idx, T* arr, const char* name, bool verbose = false, bool from_zero = false) {
