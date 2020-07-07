@@ -379,6 +379,8 @@ void reassign_huge_nodes(
 
         if (comm[j] == comm[i])
             eitociidx = mySlot;
+
+        cntr++;
     }
 
     __syncwarp();
@@ -393,6 +395,7 @@ void reassign_huge_nodes(
 
     float myBestGain = 0.0;
     uint32_t myBestComm = 0;
+    cntr = 0;
     while (true) {
         uint32_t EDGE = edge_base + cntr * stride;
         if (V[i + 1] - V[i] -1 < EDGE) {
@@ -418,6 +421,7 @@ void reassign_huge_nodes(
             myBestComm = comm[j];
             myBestGain = gain;
         }
+        cntr++;
     }
 
     // myBestComm moze byc 0
