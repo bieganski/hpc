@@ -30,7 +30,7 @@ public:
     // returns key
     CUDA_CALLABLE_MEMBER static uint32_t insertInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
 
-    CUDA_CALLABLE_MEMBER uint32_t HA::insertDummy(KeyValueInt* hashtable, uint32_t key, uint32_t table_size);
+    CUDA_CALLABLE_MEMBER static uint32_t insertDummy(KeyValueInt* hashtable, uint32_t key, uint32_t table_size);
 
     // // returns key
     // CUDA_CALLABLE_MEMBER static uint32_t addInt(KeyValueInt* hashtable, uint32_t key, uint32_t value, uint32_t table_size);
