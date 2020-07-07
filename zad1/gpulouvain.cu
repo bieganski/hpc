@@ -293,11 +293,13 @@ void compute_comm_neighbors(
     // this should be performed by all warps, but there were unknown
     // problems with this
     // for (int i = myEdgePtr0; i < hasharrayEntries; i += WARP_SIZE) {
+    int test = 0;
     for (int j = 0; j < ceil(((float) hasharrayEntries) / 32); j++) {
         int i = threadIdx.x + j * 32;
         if (i >= hasharrayEntries)
             break;
         if (hashComm[i].key != hashArrayNull) {
+            test++;
             uint32_t myIdx = atomicAdd(&freeIndices[myComm], 1);
             assert(newE[idx0 + myIdx] == 0);
             assert(newW[idx0 + myIdx] == 0);
@@ -315,6 +317,17 @@ void compute_comm_neighbors(
             // }
         }
     }
+
+    for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2) {
+        int lol = __shfl_down_sync(mask, test, offset);
+        test += lol;
+    }
+
+    if (myEdgePtr0 == 0) {
+        assert(test == insertedByMe);
+    }
+        
+    
     // if (freeIndices[myComm] != newV[myComm]) {
     //     printf("LOL: %d, %d \n", freeIndices[myComm] , newV[myComm]);
     // }
