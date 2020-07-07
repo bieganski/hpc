@@ -995,8 +995,9 @@ float reassign_communities(
             cudaDeviceSynchronize();
 
             // recompute AC values
-            zeroAC(ac, V_MAX_IDX);
-            computeAC<<<pair.first, pair.second>>> (V_MAX_IDX, k, ac, comm);
+            computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
+            // zeroAC(ac, V_MAX_IDX);
+            // computeAC<<<pair.first, pair.second>>> (V_MAX_IDX, k, ac, comm);
             cudaDeviceSynchronize();
 
             it0 = it;
@@ -1013,7 +1014,7 @@ float reassign_communities(
         auto k_pair = getBlockThreadSplit(V_MAX_IDX);
         compute_k<<<k_pair.first, k_pair.second>>> (V_MAX_IDX, V, E, W, k);
         cudaDeviceSynchronize();
-        
+
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
         print_DEBUG_stat(mod0, mod1);
 
