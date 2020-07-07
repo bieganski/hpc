@@ -472,8 +472,10 @@ void contract(const uint32_t V_MAX_IDX,
         auto it = thrust::partition(it0, commSeq.end(), partitionGenerator(i));
 
         uint32_t binNodesNum = thrust::distance(it0, it);
-        if (binNodesNum == 0)
-            break;
+        
+        if (binNodesNum == 0) {
+            continue;
+        }
             
         // handle only communities with same degree boundary
         uint32_t degUpperBound = contractBinsHost[i];
