@@ -415,8 +415,11 @@ void reassign_huge_nodes(
         float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
         gain += eitocival / m;
 
-        if (gain <= 0.0)
+        if (gain <= 0.0) {
+            cntr++;
             continue;
+        }
+            
 
         if (gain == myBestGain && comm[j] < myBestComm) {
             myBestComm = comm[j];
