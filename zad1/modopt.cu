@@ -404,12 +404,14 @@ void reassign_huge_nodes(
 
         uint32_t j = E[V[i] + EDGE];
 
-        if (comm[j] > comm[i])
+        if (comm[j] > comm[i]) {
+            cntr++;
             continue; // WIELKIE TODO
+        }
 
-        printf("A\n");
+        // printf("A\n");
         uint32_t mySlot = HA::insertDummy(hashComm, comm[j], hasharrayEntries);
-        printf("B\n");
+        // printf("B\n");
         float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
         gain += eitocival / m;
 
