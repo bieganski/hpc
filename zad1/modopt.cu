@@ -385,7 +385,7 @@ void reassign_huge_nodes(
     float eitocival = ei2ciidx == 0 ? 0.0 : hashWeight[ei2ciidx];
 
     for (int offset = 32 / 2; offset > 0; offset /= 2) {
-        ei2cival = max(ei2cival, __shfl_down_sync(FULL_MASK, ei2cival, offset));
+        eitocival = max(ei2cival, __shfl_down_sync(FULL_MASK, eitocival, offset));
     }
 
     assert(eitocival >= 0.0);
@@ -450,100 +450,100 @@ void reassign_huge_nodes(
 
 
 
-    if (edge_base == 0) {
-        // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
-        // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
-        float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
-        uint64_t test = *glob_deltaMod;
-        uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
-        // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
-        // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
+    // if (edge_base == 0) {
+    //     // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
+    //     // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
+    //     float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
+    //     uint64_t test = *glob_deltaMod;
+    //     uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
+    //     // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
+    //     // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
 
-        float gain = deltaModBest - ei_to_Ci / m;
+    //     float gain = deltaModBest - ei_to_Ci / m;
 
-        if (gain > 0 && commIdxBest < comm[i]) {
-            assert(commIdxBest > 0);
-            newComm[i] = commIdxBest;
-        } else {
-            assert(comm[i] != 0);
-            newComm[i] = comm[i];
-        }
-        atomicAdd(&numChanged, 1);
-    }
+    //     if (gain > 0 && commIdxBest < comm[i]) {
+    //         assert(commIdxBest > 0);
+    //         newComm[i] = commIdxBest;
+    //     } else {
+    //         assert(comm[i] != 0);
+    //         newComm[i] = comm[i];
+    //     }
+    //     atomicAdd(&numChanged, 1);
+    // }
     
 
-    float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+    // float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
         
 
-        float loop = i == j ? W[V[i] + EDGE] : 0;
-        float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+    //     float loop = i == j ? W[V[i] + EDGE] : 0;
+    //     float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
 
-        atomicMax(glob_loop, float_to_int(loop));
-        atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
+    //     atomicMax(glob_loop, float_to_int(loop));
+    //     atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
 
-        __syncthreads();
+    //     __syncthreads();
 
-        if (edge_base == 0) {
-            loop = int_to_float(*glob_loop);
-            ei_to_Ci = int_to_float(*glob_ei_to_Ci);
-            // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
-        }
+    //     if (edge_base == 0) {
+    //         loop = int_to_float(*glob_loop);
+    //         ei_to_Ci = int_to_float(*glob_ei_to_Ci);
+    //         // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
+    //     }
 
-        if (edge_base == 0) {
-            ei_to_Ci -= loop;
-        }
+    //     if (edge_base == 0) {
+    //         ei_to_Ci -= loop;
+    //     }
 
-        float deltaModRaw = comm[j] >= comm[i] ? 
-            -(1 << 5) : 
-            k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
+    //     float deltaModRaw = comm[j] >= comm[i] ? 
+    //         -(1 << 5) : 
+    //         k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
 
-        uint32_t newCommIdx = comm[j];
+    //     uint32_t newCommIdx = comm[j];
 
-        // NOWY KOD
-        uint32_t bestCommGlobal = comm[j];
-        float bestDeltaGlobal = 0.0;
-        for (int offset = 32 / 2; offset > 0; offset /= 2) {
-            float bestDelta = __shfl_down_sync(FULL_MASK, bestDeltaGlobal, offset);
-            float bestComm = __shfl_down_sync(FULL_MASK, bestCommGlobal, offset);
-            if (bestDelta > bestDeltaGlobal) {
-                bestDeltaGlobal = bestDelta;
-                bestCommGlobal = bestComm;
-            }
-        }
+    //     // NOWY KOD
+    //     uint32_t bestCommGlobal = comm[j];
+    //     float bestDeltaGlobal = 0.0;
+    //     for (int offset = 32 / 2; offset > 0; offset /= 2) {
+    //         float bestDelta = __shfl_down_sync(FULL_MASK, bestDeltaGlobal, offset);
+    //         float bestComm = __shfl_down_sync(FULL_MASK, bestCommGlobal, offset);
+    //         if (bestDelta > bestDeltaGlobal) {
+    //             bestDeltaGlobal = bestDelta;
+    //             bestCommGlobal = bestComm;
+    //         }
+    //     }
 
-    }
-
-    if (edge_base == 0) {
-        // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
-        // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
-        float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
-        uint64_t test = *glob_deltaMod;
-        uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
-        // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
-        // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
-
-        float gain = deltaModBest - ei_to_Ci / m;
-
-        if (gain > 0 && commIdxBest < comm[i]) {
-            assert(commIdxBest > 0);
-            newComm[i] = commIdxBest;
-        } else {
-            assert(comm[i] != 0);
-            newComm[i] = comm[i];
-        }
-        atomicAdd(&numChanged, 1);
-    }
-    // __syncthreads(); // TODO
-    // if (maxDegree >= 1024) {
-    //     // cudaDeviceSynchronize();
-    //     printf("numChanged ?== numNodes, %d, %d\n", numChanged, numNodes);
-    //     // __syncthreads();
-    //     // if (numChanged != numNodes) {
-    //     //     printf("numChanged ?== numNodes, %d, %d\n", numChanged, numNodes);
-    //     //     // assert(numChanged == numNodes);
-    //     // }
-        
     // }
+
+    // if (edge_base == 0) {
+    //     // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
+    //     // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
+    //     float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
+    //     uint64_t test = *glob_deltaMod;
+    //     uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
+    //     // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
+    //     // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
+
+    //     float gain = deltaModBest - ei_to_Ci / m;
+
+    //     if (gain > 0 && commIdxBest < comm[i]) {
+    //         assert(commIdxBest > 0);
+    //         newComm[i] = commIdxBest;
+    //     } else {
+    //         assert(comm[i] != 0);
+    //         newComm[i] = comm[i];
+    //     }
+    //     atomicAdd(&numChanged, 1);
+    // }
+    // // __syncthreads(); // TODO
+    // // if (maxDegree >= 1024) {
+    // //     // cudaDeviceSynchronize();
+    // //     printf("numChanged ?== numNodes, %d, %d\n", numChanged, numNodes);
+    // //     // __syncthreads();
+    // //     // if (numChanged != numNodes) {
+    // //     //     printf("numChanged ?== numNodes, %d, %d\n", numChanged, numNodes);
+    // //     //     // assert(numChanged == numNodes);
+    // //     // }
+        
+    // // }
     
 }
 
