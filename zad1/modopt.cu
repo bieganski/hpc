@@ -403,7 +403,7 @@ void reassign_huge_nodes(
         if (comm[j] > comm[i])
             continue; // WIELKIE TODO
 
-        uint32_t mySlot = HA::insertInt(hashComm, comm[j], 0, hasharrayEntries); // dummy one
+        uint32_t mySlot = HA::insertDummy(hashComm, comm[j], hasharrayEntries);
 
         float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
         gain += eitocival / m;
