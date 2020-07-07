@@ -442,7 +442,7 @@ void reassign_huge_nodes(
     if (edge_base == 0) {
         if (bestGainGlobal > 0.0) {
             assert(bestCommGlobal > 0);
-            assert(bestCommGlobal < newComm[i]); // WIELKIE TODO
+            assert(bestCommGlobal < comm[i]); // WIELKIE TODO
             newComm[i] = bestCommGlobal;
         } else {
             newComm[i] = comm[i];
