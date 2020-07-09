@@ -150,7 +150,6 @@ void compute_comm_neighbors(
     extern __shared__ char hashtables[];
 
     int myCommPtr = blockIdx.x;
-    int myEdgePtr = threadIdx.x;
 
     uint32_t myComm = binCommunities[myCommPtr];
 
@@ -174,10 +173,9 @@ void compute_comm_neighbors(
     }
 
     uint32_t insertedByMe = 0;
-    bool finish = false; // cannot use early return because of usage of warp-level primitives
-
     uint32_t nodeIdx = firstNodePtrIncl + 0;
-    while(true) {
+    
+    while (true) {
 
         if (nodeIdx >= lastNodePtrExcl) {
             break;
