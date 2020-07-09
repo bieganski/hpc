@@ -1012,7 +1012,7 @@ float reassign_communities(
         cudaDeviceSynchronize();
 
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-        print_DEBUG_stat(mod0, mod1);
+        // print_DEBUG_stat(mod0, mod1);
 
         maxMod = max(maxMod, mod1);
 
