@@ -819,7 +819,7 @@ float reassign_communities_bin(
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
         assert(shmBytes <= SHARED_MEM_SIZE);
 
-        printf("MODOPT: reassign_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
+        // printf("MODOPT: reassign_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
         reassign_nodes<<<blockNum, dim, shmBytes>>>      (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m);
     }
@@ -856,8 +856,8 @@ float __computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_
     auto tmp = thrust::device_vector<float>(V_MAX_IDX + 1);
     thrust::transform(ac, ac + V_MAX_IDX + 1, tmp.begin(), thrust::square<float>());
     float sum = thrust::reduce(tmp.begin(), tmp.end(), (double) 0, thrust::plus<double>());
-    fprintf(stderr, "MOD ACsum: %f\n", sum);
-    fprintf(stderr, "MOD: sum ei: %f\n", ei_to_Ci_sum);
+    // fprintf(stderr, "MOD ACsum: %f\n", sum);
+    // fprintf(stderr, "MOD: sum ei: %f\n", ei_to_Ci_sum);
 
     return ei_to_Ci_sum / (2 * m) - ( sum / (4 * m * m));
 }
@@ -932,7 +932,7 @@ float reassign_communities(
 
     float mod0, mod1, maxMod;    
     mod0 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-    printf("MOD0 = %f\n", mod0);
+    // printf("MOD0 = %f\n", mod0);
 
     maxMod = mod0;
 
@@ -969,7 +969,7 @@ float reassign_communities(
 
             
 
-            printf(">>>BIN RUN: running %u nodes in bin, i (right)=%d\n", binNodesNum, i);
+            // printf(">>>BIN RUN: running %u nodes in bin, i (right)=%d\n", binNodesNum, i);
             reassign_communities_bin(binNodes, binNodesNum, V, E, W, k, ac, comm, newComm, maxDegree, m);
 
             // for(int i = 0; i < binNodesNum; i++) {
@@ -1016,11 +1016,11 @@ float reassign_communities(
 
         maxMod = max(maxMod, mod1);
 
-        printf("MOD1 %f\n", mod1);
+        // printf("MOD1 %f\n", mod1);
 
-        if (mod0 > mod1) {
-            printf("MOD ZLE: %f -> %f\n", mod0, mod1);
-        }
+        // if (mod0 > mod1) {
+        //     printf("MOD ZLE: %f -> %f\n", mod0, mod1);
+        // }
 
         if (abs(mod1 - mod0) <= 0.05) {
             if (!changedSth) {
@@ -1028,18 +1028,18 @@ float reassign_communities(
             } else {
                 contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
                 changedSth = false;
-                printf("\n*****************                 CONTRACT2                ****************\n");
+                // printf("\n*****************                 CONTRACT2                ****************\n");
 
                 float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-                fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
-                fprintf(stderr, "\n=======\n");
+                // fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
+                // fprintf(stderr, "\n=======\n");
                 // print_DEBUG_stat(mod1, mod_contract);
             }
         } else if (mod1 - mod0 < minGain) {
             contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
-            fprintf(stderr, "\n=======\n");
+            // fprintf(stderr, "\n=======\n");
             changedSth = false;
-            printf("\n*****************                 CONTRACT                 ****************\n");
+            // printf("\n*****************                 CONTRACT                 ****************\n");
             // print_comm_assignment(V_MAX_IDX, comm);
             cudaDeviceSynchronize();
             mod0 = mod1;
@@ -1051,7 +1051,7 @@ float reassign_communities(
             // printf("\n");
 
             float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-            fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
+            // fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
 
             // print_DEBUG_stat(mod1, mod_contract);
 
@@ -1063,7 +1063,7 @@ float reassign_communities(
             // break; // TODO, poprawić contract
         } else {
             changedSth = true;
-            printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
+            // printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
             // mod0 = mod1;
         }
         mod0 = mod1;

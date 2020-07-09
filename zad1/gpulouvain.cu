@@ -428,13 +428,13 @@ void contract(const uint32_t V_MAX_IDX,
     // compressedCom <=> `com` from paper
     cudaDeviceSynchronize();
 
-    print_DEBUG(V_MAX_IDX + 1, V, "V", true);
-    print_DEBUG(V[V_MAX_IDX + 1] - 1, E, "E", true, true);
-    print_DEBUG(V_MAX_IDX, comm, "comm", true);
+    // print_DEBUG(V_MAX_IDX + 1, V, "V", true);
+    // print_DEBUG(V[V_MAX_IDX + 1] - 1, E, "E", true, true);
+    // print_DEBUG(V_MAX_IDX, comm, "comm", true);
     
 
-    print_DEBUG(V_MAX_IDX, RAW(commSize), "commSize", true);
-    print_DEBUG(V_MAX_IDX, RAW(commDegree), "commDegree", true);
+    // print_DEBUG(V_MAX_IDX, RAW(commSize), "commSize", true);
+    // print_DEBUG(V_MAX_IDX, RAW(commDegree), "commDegree", true);
 
     thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
 
@@ -451,10 +451,10 @@ void contract(const uint32_t V_MAX_IDX,
 
     computeWTF(V, compressedComm, WTF);
 
-    print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true, true);
-    print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF", true);
-    print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos", true);
-    print_DEBUG(V_MAX_IDX, RAW(vertexStart), "vertexStart", true);
+    // print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true, true);
+    // print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF", true);
+    // print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos", true);
+    // print_DEBUG(V_MAX_IDX, RAW(vertexStart), "vertexStart", true);
 
     uint32_t E_size = V[V_MAX_IDX + 1];
     // Each call to `compute_comm _neighbors` kernel updates part of these values
@@ -465,7 +465,7 @@ void contract(const uint32_t V_MAX_IDX,
     // we don't want empty communities
     auto it0 = thrust::partition(commSeq.begin(), commSeq.end(), partitionGenerator(0));
 
-    printf("MODLOL: empty: %d, all: %d, perc: %2.2f\n", thrust::distance(commSeq.begin(), it0), V_MAX_IDX, ((float) thrust::distance(commSeq.begin(), it0)) / V_MAX_IDX);
+    // printf("MODLOL: empty: %d, all: %d, perc: %2.2f\n", thrust::distance(commSeq.begin(), it0), V_MAX_IDX, ((float) thrust::distance(commSeq.begin(), it0)) / V_MAX_IDX);
     
     for (int i = 1; ; i++) {
         if (i == 6)
@@ -539,7 +539,7 @@ void contract(const uint32_t V_MAX_IDX,
     float res1 = thrust::reduce(&W[0], &W[E_size]);
     float res2 = thrust::reduce(newW.begin(), newW.end());
 
-    printf("[CC]: %f -> %f\n", res1, res2);
+    // printf("[CC]: %f -> %f\n", res1, res2);
 
     thrust::copy_if(newE.begin(), newE.end(), realNewE.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
     thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const float& x) {return x != 0;});
@@ -638,8 +638,8 @@ int main(int argc, char **argv) {
     cudaEventDestroy(startComp);
     cudaEventDestroy(stopComp);
 
-    printf("%f\n", mod);
-    printf("%f %f\n", elapsedTimeComp, elapsedTimeCopy);
+    // printf("%f\n", mod);
+    // printf("%f %f\n", elapsedTimeComp, elapsedTimeCopy);
 
     thrust::host_vector<uint32_t> resComm(V_MAX_IDX + 1);
     
