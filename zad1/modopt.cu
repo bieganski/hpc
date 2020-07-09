@@ -241,9 +241,9 @@ void reassign_huge_nodes(
     // variables common for each vertex, accumulating ei_to_Ci value 
     // computed in parallel
     char* realPerVertexVars = (shared ? shared_mem : perVertexVars);
-    if (i_ptr + edge_ptr == 0) {
-        printf("NO LOL :  : :: !!!! ! %p\n", (void*)(realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE));
-    }
+    // if (i_ptr + edge_ptr == 0) {
+    //     printf("NO LOL :  : :: !!!! ! %p\n", (void*)(realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE));
+    // }
     uint32_t ei_to_ci_off_bytes = (i_ptr % (shared ? nodesPerBlock : numNodes)) * VAR_MEM_PER_VERTEX_BYTES_DEFINE;
     int32_t* glob_ei_to_Ci = (int32_t*) &realPerVertexVars[ei_to_ci_off_bytes];
     
@@ -632,11 +632,11 @@ void reassign_nodes(
     uint32_t mask = __ballot_sync(FULL_MASK, edgeNum < maxDegree / 2);
     assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2)); // TODO - to się kiedyś wysypie i dobrze, wtedy podmienić mask
 
-    if (i_ptr + edgeNum == 0) {
-        binprintf(mask);
-        printf("\n");
-        binprintf(1 << 5);
-    }
+    // if (i_ptr + edgeNum == 0) {
+    //     binprintf(mask);
+    //     printf("\n");
+    //     binprintf(1 << 5);
+    // }
     
 
     // printf("WAGA: (comm %d, comm %d) = %f\n", comm[i], comm[j], hashWeight[mySlot].value);
@@ -755,9 +755,9 @@ float reassign_communities_bin(
     uint32_t blockNum = ceil( (float)binNodesNum / (float) threadsY );
 
     // assert(blockNum * threadsY >= binNodesNum);
-    if (blockNum * threadsY < binNodesNum) {
-        printf("MOD FAK: binNodesNum: %d , blockNum: %d, threadsY: %d \n", binNodesNum, blockNum, threadsY);
-    }
+    // if (blockNum * threadsY < binNodesNum) {
+    //     printf("MOD FAK: binNodesNum: %d , blockNum: %d, threadsY: %d \n", binNodesNum, blockNum, threadsY);
+    // }
     dim3 dim(threadsX, threadsY);
     // printf("PATOLA: (%d, %d) x %d\n", threadsX, threadsY, blockNum);
 
@@ -773,7 +773,7 @@ float reassign_communities_bin(
 
         bool useGlobalMem = SHARED_MEM_SIZE < shmBytes + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
 
-        printf("MOD binNodesNum: %d\n", binNodesNum);
+        // printf("MOD binNodesNum: %d\n", binNodesNum);
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
             // printf("memsize: %d\n", memsize);
@@ -788,8 +788,8 @@ float reassign_communities_bin(
             // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
             // assert(globalHashArrays != nullptr);
             
-            printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
-            printf("huge, [%p, %p], [%p, %p]\n", (void*)deviceGlobalHashArrays, (void*) (deviceGlobalHashArrays + memsize), (void*)perVertexVars, (void*)(perVertexVars + perVertexMemSize));
+            // printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
+            // printf("huge, [%p, %p], [%p, %p]\n", (void*)deviceGlobalHashArrays, (void*) (deviceGlobalHashArrays + memsize), (void*)perVertexVars, (void*)(perVertexVars + perVertexMemSize));
 
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
@@ -797,11 +797,11 @@ float reassign_communities_bin(
             //     printf("LOL: %d\n", shmBytes);
             // }
             
-            printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
+            // printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
             assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
-        printf("MODOPT: maxdeg: %d, reassign_huge_nodes<< %d, (%d, %d), %d\n", maxDegree, blockNum, threadsX, threadsY, shmBytes);
+        // printf("MODOPT: maxdeg: %d, reassign_huge_nodes<< %d, (%d, %d), %d\n", maxDegree, blockNum, threadsX, threadsY, shmBytes);
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, !useGlobalMem, perVertexVars);
 
