@@ -358,12 +358,6 @@ void reassign_nodes(
 
     uint32_t j = E[V[i] + edgeNum];
 
-    // dziwne 1
-    // if (comm[j] == 0) {
-    //     printf("DUPA: i=%d, j=%d", i, j);
-    // }
-
-
     // each hashtable contains of hasharrayEntries elements
     KeyValueFloat* hashWeight = (KeyValueFloat*) hashtables + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries);
     KeyValueInt*   hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
@@ -399,7 +393,6 @@ void reassign_nodes(
         todo += __shfl_down_sync(mask, todo, offset);
     }
 
-    // dziwne 2
     if (edgeNum == 0) {
         assert(todo == loop);
         ei_to_Ci -= loop;
@@ -418,7 +411,7 @@ void reassign_nodes(
         uint32_t newCommIdxRed = __shfl_down_sync(mask, newCommIdx, offset);
 
         if (newCommIdxRed == 0)
-            continue; // TODO - brzydki hack na undefined behavior
+            continue; // TODO undefined behavior
 
         if (deltaModRed > deltaMod) {
             deltaMod = deltaModRed;

@@ -22,7 +22,7 @@
 #include "utils.h"
 #include "modopt.h"
 
-using namespace std; // TODO wywalić
+using namespace std;
 
 using HA = HashArray;
 
@@ -85,9 +85,9 @@ void compute_size_degree(const uint32_t V_MAX_IDX,
 __global__
 void compute_compressed_comm(const uint32_t V_MAX_IDX,
                           const uint32_t* __restrict__ V,
-                          const uint32_t* __restrict__ E, // TODO niepotrzebne
+                          const uint32_t* __restrict__ E,
                           const uint32_t* __restrict__ comm,
-                          const uint32_t* __restrict__ commSize, // TODO niepotrzebne
+                          const uint32_t* __restrict__ commSize,
                           const uint32_t* __restrict__ vertexStart,
                           uint32_t* __restrict__ tmpCounter,
                           uint32_t* __restrict__ com) {
@@ -174,9 +174,6 @@ void compute_comm_neighbors(
     }
 
     uint32_t insertedByMe = 0;
-    // uint32_t start = firstNodePtrIncl;
-    // uint32_t offset = WTF[firstNodePtrIncl];
-
     bool finish = false; // cannot use early return because of usage of warp-level primitives
 
     uint32_t nodeIdx = firstNodePtrIncl + 0;
@@ -187,25 +184,14 @@ void compute_comm_neighbors(
         }
 
         uint32_t myNode = compressedComm[nodeIdx]; // common for whole warp
-        // myNode :: oldVNum 
-        uint32_t myNeighNum = V[myNode + 1] - V[myNode]; // :: size(oldVnum)
-        // assert(myNeighNum == WTF[nodeIdx + 1] - WTF[nodeIdx]);
+        uint32_t myNeighNum = V[myNode + 1] - V[myNode];
         
         for (int i = 0; i < ceil(((float) myNeighNum) / 32.0); i++) {
-            uint32_t myEdgeIdx = threadIdx.x + i * 32; // :: Epos
+            uint32_t myEdgeIdx = threadIdx.x + i * 32;
 
             if (myEdgeIdx >= myNeighNum) {
                 break;
             }
-
-            // V :: Vnum -> Epos
-            // E :: Epos -> Vnum
-            // W :: Epos -> W(Vnum)
-            // comm :: Vnum -> Cnum
-            // CC :: NVnum -> VNum
-            // edgePos :: NCnum -> NEpos
-
-            // WTF :: NVnum -> size(VNum)
 
             uint32_t myEdgeVnum = E[V[myNode] + myEdgeIdx];
             uint32_t myEdgeWeight = W[V[myNode] + myEdgeIdx];
@@ -223,43 +209,6 @@ void compute_comm_neighbors(
 
     __syncthreads();
 
-
-    /*
-    while(true) {
-
-        // looking for my node and edge
-        uint32_t myEdge = -1;
-        uint32_t myNode = -1;
-        uint32_t edgeIdx = -1;
-
-        for (uint32_t i = start; !finish && (i < lastNodePtrExcl); i++) {
-            if (myEdgePtr < WTF[i + 1] - offset) {
-                myNode = compressedComm[i];
-                start = i; // for next iteration
-                edgeIdx = myEdgePtr - (WTF[i] - offset);
-                myEdge = E[V[myNode] + edgeIdx];
-                break;
-            } else if (i == lastNodePtrExcl - 1) {
-                // they don't need me
-                finish = true;
-            }
-        }
-
-        if (finish)
-            break;
-
-        // I know who am I, now add my neighbor to sum of weights
-        if ( HA::insertWithFeedback(hashComm, hashWeight, comm[myEdge], comm[myEdge], W[V[myNode] + edgeIdx], hasharrayEntries) ) {
-            insertedByMe++;
-        } else {
-            ;
-        }
-
-        myEdgePtr += WARP_SIZE;
-    } // while(true)
-    */
-
-
     // now, compute number of totally inserted in this warp's community
     
     int mask = __ballot_sync(0xFFFFFFFF, 1);
@@ -269,10 +218,6 @@ void compute_comm_neighbors(
     for (int offset = WARP_SIZE / 2; offset > 0; offset /= 2)
         insertedByMe += __shfl_down_sync(mask, insertedByMe, offset); // only warp with idx == 0 keeps proper value
     
-    // assert(0 == __ffs(mask) - 1);
-    assert(__ffs(mask) & 1);
-    // int leader = 0; // __ffs(mask) - 1; // = 0 // TODO assumption: zero-idx-thread is alive
-
     uint32_t commNeighborsNum = __shfl_sync(mask, insertedByMe, 0);
 
     int myEdgePtr0 = threadIdx.x;
@@ -285,8 +230,6 @@ void compute_comm_neighbors(
     // assert(mask == FULL_MASK);
     uint32_t idx0 = edgePos[myComm];
     
-    // if (threadIdx.x != 0)
-    //     return;
     __syncthreads();
 
     for (int j = 0; j < ceil(((float) hasharrayEntries) / 32); j++) {
@@ -300,22 +243,9 @@ void compute_comm_neighbors(
             newE[idx0 + myIdx] = hashComm[i].value;
 
             assert(hashArrayNull != hashComm[i].value);
-            // assert(hashWeight[i].value != 0.0);
             newW[idx0 + myIdx] = hashWeight[i].value;
-            
-            // if (myComm == hashComm[i].value) {
-            //     // TODO self-loop, should it be halved?
-            //     newW[idx0 + myIdx] = hashWeight[i].value; //  / 2.0;
-            // } else {
-            //     newW[idx0 + myIdx] = hashWeight[i].value;
-            // }
         }
     }
-        
-    
-    // if (freeIndices[myComm] != newV[myComm]) {
-    //     printf("LOL: %d, %d \n", freeIndices[myComm] , newV[myComm]);
-    // }
     assert(freeIndices[myComm] == newV[myComm]);
 }
 
@@ -396,7 +326,6 @@ void contract(const uint32_t V_MAX_IDX,
                           const uint32_t* __restrict__ comm,
                           thrust::device_vector<uint32_t>& globalCommAssignment) {
 
-    // TODO przenieśc je wyżej, żeby alokować tylko raz
     thrust::device_vector<uint32_t> commSize(V_MAX_IDX + 1, (uint32_t) 0);
     thrust::device_vector<uint32_t> commDegree(V_MAX_IDX + 1, (uint32_t) 0);
     thrust::device_vector<uint32_t> edgePos(V_MAX_IDX + 1, 0);
@@ -428,14 +357,6 @@ void contract(const uint32_t V_MAX_IDX,
     // compressedCom <=> `com` from paper
     cudaDeviceSynchronize();
 
-    // print_DEBUG(V_MAX_IDX + 1, V, "V", true);
-    // print_DEBUG(V[V_MAX_IDX + 1] - 1, E, "E", true, true);
-    // print_DEBUG(V_MAX_IDX, comm, "comm", true);
-    
-
-    // print_DEBUG(V_MAX_IDX, RAW(commSize), "commSize", true);
-    // print_DEBUG(V_MAX_IDX, RAW(commDegree), "commDegree", true);
-
     thrust::exclusive_scan(commDegree.begin(), commDegree.end(), edgePos.begin());
 
     auto commDegreeLambda = RAW(commDegree); // you cannot use thrust's vector in device code
@@ -451,11 +372,6 @@ void contract(const uint32_t V_MAX_IDX,
 
     computeWTF(V, compressedComm, WTF);
 
-    // print_DEBUG(V_MAX_IDX, RAW(compressedComm), "compressedComm", true, true);
-    // print_DEBUG(V_MAX_IDX, RAW(WTF), "WTF", true);
-    // print_DEBUG(V_MAX_IDX, RAW(edgePos), "edgePos", true);
-    // print_DEBUG(V_MAX_IDX, RAW(vertexStart), "vertexStart", true);
-
     uint32_t E_size = V[V_MAX_IDX + 1];
     // Each call to `compute_comm _neighbors` kernel updates part of these values
     thrust::device_vector<uint32_t> newV(V_MAX_IDX + 2, 0);
@@ -465,8 +381,6 @@ void contract(const uint32_t V_MAX_IDX,
     // we don't want empty communities
     auto it0 = thrust::partition(commSeq.begin(), commSeq.end(), partitionGenerator(0));
 
-    // printf("MODLOL: empty: %d, all: %d, perc: %2.2f\n", thrust::distance(commSeq.begin(), it0), V_MAX_IDX, ((float) thrust::distance(commSeq.begin(), it0)) / V_MAX_IDX);
-    
     for (int i = 1; ; i++) {
         if (i == 6)
             break;
@@ -539,8 +453,6 @@ void contract(const uint32_t V_MAX_IDX,
     float res1 = thrust::reduce(&W[0], &W[E_size]);
     float res2 = thrust::reduce(newW.begin(), newW.end());
 
-    // printf("[CC]: %f -> %f\n", res1, res2);
-
     thrust::copy_if(newE.begin(), newE.end(), realNewE.begin(), [] __device__ (const uint32_t& x) {return x != 0;});
     thrust::copy_if(newW.begin(), newW.end(), realNewW.begin(), [] __device__ (const float& x) {return x != 0;});
 
@@ -569,15 +481,6 @@ void contract(const uint32_t V_MAX_IDX,
     free(contractBinsHost);
 }
 
-
-
-/**
- * UWAGA:
- * N - rozmiar tablicy k
- * N + 1 - rozmiar tablicy V
- * V - iterujemy od 1
- * E, W - rozmiar 2*N, iterujemy od 0
- * */
 int main(int argc, char **argv) {
     if (parse_args(argc, argv)) {
         exit(1);
@@ -649,7 +552,6 @@ int main(int argc, char **argv) {
     if (VERBOSE) {
         print_comm_assignment(V_MAX_IDX, RAW(resComm));
     }
-    // TODO cleanup
-    // cudaFree(V);
+    
     return 0;
 }
