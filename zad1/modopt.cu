@@ -79,27 +79,6 @@ unsigned int __lane_id() {
 
 
 
-// https://devblogs.nvidia.com/using-cuda-warp-level-primitives/
-// __device__ 
-// int atomicAggInc(int *ptr) {
-//     int mask = __match_any_sync(__activemask(), (unsigned long long) ptr);
-//     int leader = __ffs(mask) - 1;    // select a leader
-//     int res;
-//     if (__lane_id() == leader)                  // leader does the update
-//         res = atomicAdd(ptr, __popc(mask));
-//     res = __shfl_sync(mask, res, leader);    // get leader’s old value
-//     return res + __popc(mask & ((1 << __lane_id()) - 1)); //compute old value
-// }
-
-// __device__ 
-// __forceinline__ 
-// uint64_t packed_ei_to_ci(uint32_t ei_to_ci, uint32_t ) { 
-//     unsigned int laneid; 
-//     asm volatile ("mov.u32 %0, %laneid;" : "=r"(laneid)); 
-//     return laneid; 
-// }
-
-
 // https://fgiesen.wordpress.com/2013/01/21/order-preserving-bijections/
 __device__
 __forceinline__
@@ -182,13 +161,6 @@ void reassign_huge_nodes(
     
     assert(edge_ptr < 32);
 
-
-    // printf("UWAGA:");
-
-    if (i_ptr >= nodesPerBlock * gridDim.x) {
-        printf("i_ptr : %d = %d + %d*%d, nodes: %d\n", i_ptr, threadIdx.y, blockIdx.x, blockDim.y, nodesPerBlock * gridDim.x);
-    }
-
     // before any early return, let's utilize all threads for zeroing memory.
 
     KeyValueFloat* hashWeight;
@@ -257,11 +229,6 @@ void reassign_huge_nodes(
     assert(*glob_loop == 0);
     assert(*glob_deltaMod == 0);
 
-
-
-    if (perVertexVars != nullptr && &realPerVertexVars[deltaMod_off_bytes + 8] > realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE)
-        printf("MAM CIE: %p, %p, diff: %p\n", (void*) &realPerVertexVars[deltaMod_off_bytes], (void*) realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE, &realPerVertexVars[deltaMod_off_bytes] - realPerVertexVars + numNodes * VAR_MEM_PER_VERTEX_BYTES_DEFINE);
-
         
     __syncthreads();
 
@@ -270,99 +237,6 @@ void reassign_huge_nodes(
 
     int cntr = 0;
     uint32_t edge_base = edge_ptr;
-    // TODO synce
-    // while (true) {
-
-    //     uint32_t EDGE = edge_base + cntr * stride;
-    //     if (V[i + 1] - V[i] -1 < EDGE) {
-    //         break;
-    //     }
-        
-    //     // if (maxDegree <= 1024) {
-    //     //     // printf("DEBUG: EDGE: %d, V_num: %d\n", EDGE, V[i + 1] - V[i] -1);
-    //     //     assert(cntr == 0); // only one iteration needed
-    //     // } else {
-    //     //     ; // assert(stride == 1024);
-    //     // }
-
-    //     uint32_t j = E[V[i] + EDGE]; // my neighbor
-    //     if (comm[j] == 0) {
-    //         printf("DUPA: i=%d, j=%d", i, j);
-    //     }
-
-    //     uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
-    //     float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + EDGE]);
-
-    //     // if (i == 2) {
-    //     //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + EDGE], j, mySlot, comm[j]);
-    //     // }
-
-    //     __syncwarp();
-
-
-    //     float loop = i == j ? W[V[i] + EDGE] : 0;
-    //     ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
-
-    //     atomicMax(glob_loop, float_to_int(loop));
-    //     atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
-
-    //     __syncthreads();
-
-    //     if (edge_base == 0) {
-    //         loop = int_to_float(*glob_loop);
-    //         ei_to_Ci = int_to_float(*glob_ei_to_Ci);
-    //         // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
-    //     }
-
-    //     if (edge_base == 0) {
-    //         ei_to_Ci -= loop;
-    //     }
-
-    //     float deltaModRaw = comm[j] >= comm[i] ? 
-    //         -(1 << 18) : 
-    //         k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
-
-    //     uint32_t newCommIdx = comm[j];
-
-    //     // Now, we must perform reduction on deltaMod values, to find best newCommIdx.
-    //     // It's kinda hacky, cause in case of obtaining two identical deltaMod values,
-    //     // we choose community with lower idx. It is accomplished by finding maximal value
-    //     // of pair (int(deltaMod), -newCommIdx). We implement it using concatenation
-    //     // of two unsigned values (obtained by order-preserving bijection from floats).
-    //     assert(newCommIdx != UINT32_MAX);
-    //     assert(newCommIdx != 0);
-    //     uint32_t newCommIdxRepr = -1 - newCommIdx; // bits flipped
-
-    //     // uint32_t newCommIdxRepr = __brev(newCommIdx);
-
-    //     assert(-1 - newCommIdxRepr == newCommIdx);
-
-    //     // if (newCommIdxRepr == 0) {
-    //     //     printf("FAK: %llu\n", newCommIdx);
-    //     // }
-
-    //     // LOL
-    //     // printf("deltaMod: %f, toInt: %d, to uint: %u\n", deltaModRaw, float_to_int(deltaModRaw), int_to_uint(float_to_int(deltaModRaw)));
-    //     // printf("deltaMod: %f, toInt: %d, to uint: %u, TO RAW::::%f\n", deltaModRaw, float_to_int(deltaModRaw), float_to_uint(deltaModRaw), uint_to_float(float_to_uint(deltaModRaw)));
-    //     // printf("comm idx repr: %u\n", newCommIdxRepr);
-
-    //     // LOL
-    //     // uint64_t deltaMod = (((uint64_t) int_to_uint(float_to_int(deltaModRaw))) << 31) + newCommIdxRepr;
-    //     deltaMod = (((uint64_t) float_to_uint(deltaModRaw)) << 31) | newCommIdxRepr;
-
-    //     assert((uint32_t)deltaMod != 0);
-
-    //     // printf("moj deltamod: %llu oraz test: \n", deltaMod);
-    //     assert(sizeof(uint64_t) == sizeof(unsigned long long int));
-
-    //     atomicMax((unsigned long long int*) glob_deltaMod, (unsigned long long int)deltaMod);
-
-    //     __syncthreads();
-
-    //     cntr++;
-    // }
-
-
     uint32_t eitociidx = 0;
 
     while (true) {
@@ -404,14 +278,7 @@ void reassign_huge_nodes(
 
         uint32_t j = E[V[i] + EDGE];
 
-        // if (comm[j] > comm[i]) {
-        //     cntr++;
-        //     continue; // WIELKIE TODO
-        // }
-
-        // printf("A\n");
         uint32_t mySlot = HA::insertDummy(hashComm, comm[j], hasharrayEntries);
-        // printf("B\n");
         float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
         gain += eitocival / m;
 
@@ -419,7 +286,6 @@ void reassign_huge_nodes(
             cntr++;
             continue;
         }
-            
 
         if (gain == myBestGain && comm[j] < myBestComm) {
             myBestComm = comm[j];
@@ -446,114 +312,11 @@ void reassign_huge_nodes(
     if (edge_base == 0) {
         if (bestGainGlobal > 0.0) {
             assert(bestCommGlobal > 0);
-            // assert(bestCommGlobal <= comm[i]); // WIELKIE TODO
             newComm[i] = bestCommGlobal;
         } else {
             newComm[i] = comm[i];
         }
     }
-
-    return;
-
-
-
-
-
-    // if (edge_base == 0) {
-    //     // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
-    //     // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
-    //     float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
-    //     uint64_t test = *glob_deltaMod;
-    //     uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
-    //     // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
-    //     // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
-
-    //     float gain = deltaModBest - ei_to_Ci / m;
-
-    //     if (gain > 0 && commIdxBest < comm[i]) {
-    //         assert(commIdxBest > 0);
-    //         newComm[i] = commIdxBest;
-    //     } else {
-    //         assert(comm[i] != 0);
-    //         newComm[i] = comm[i];
-    //     }
-    //     atomicAdd(&numChanged, 1);
-    // }
-    
-
-    // float gain = k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
-        
-
-    //     float loop = i == j ? W[V[i] + EDGE] : 0;
-    //     float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
-
-    //     atomicMax(glob_loop, float_to_int(loop));
-    //     atomicMax(glob_ei_to_Ci, float_to_int(ei_to_Ci));
-
-    //     __syncthreads();
-
-    //     if (edge_base == 0) {
-    //         loop = int_to_float(*glob_loop);
-    //         ei_to_Ci = int_to_float(*glob_ei_to_Ci);
-    //         // printf("!!!!!!!!!!  %d:  global loop: %f,   global ei_to_ci: %f\n", i, loop, ei_to_Ci);
-    //     }
-
-    //     if (edge_base == 0) {
-    //         ei_to_Ci -= loop;
-    //     }
-
-    //     float deltaModRaw = comm[j] >= comm[i] ? 
-    //         -(1 << 5) : 
-    //         k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
-
-    //     uint32_t newCommIdx = comm[j];
-
-    //     // NOWY KOD
-    //     uint32_t bestCommGlobal = comm[j];
-    //     float bestDeltaGlobal = 0.0;
-    //     for (int offset = 32 / 2; offset > 0; offset /= 2) {
-    //         float bestDelta = __shfl_down_sync(FULL_MASK, bestDeltaGlobal, offset);
-    //         float bestComm = __shfl_down_sync(FULL_MASK, bestCommGlobal, offset);
-    //         if (bestDelta > bestDeltaGlobal) {
-    //             bestDeltaGlobal = bestDelta;
-    //             bestCommGlobal = bestComm;
-    //         }
-    //     }
-
-    // }
-
-    // if (edge_base == 0) {
-    //     // TODO, commented one and line below aren't equivalent, it breaks for negative floats.
-    //     // float deltaModBest = uint_to_float((uint32_t)(*glob_deltaMod >> 31));
-    //     float deltaModBest = int_to_float(uint_to_int((uint32_t)(*glob_deltaMod >> 31)));
-    //     uint64_t test = *glob_deltaMod;
-    //     uint32_t commIdxBest = (uint32_t) -1 -  (uint32_t) (test & UINT32_MAX); //  (uint32_t) *glob_deltaMod ; // ( (uint32_t) (( (uint64_t) 0xffffffff) & *glob_deltaMod) );
-    //     // uint32_t commIdxBest = __brev((uint32_t) *glob_deltaMod);
-    //     // printf("%d NAJW:: best mod: %f,  best comm: %d\n",  i, deltaModBest, commIdxBest); 
-
-    //     float gain = deltaModBest - ei_to_Ci / m;
-
-    //     if (gain > 0 && commIdxBest < comm[i]) {
-    //         assert(commIdxBest > 0);
-    //         newComm[i] = commIdxBest;
-    //     } else {
-    //         assert(comm[i] != 0);
-    //         newComm[i] = comm[i];
-    //     }
-    //     atomicAdd(&numChanged, 1);
-    // }
-    // // __syncthreads(); // TODO
-    // // if (maxDegree >= 1024) {
-    // //     // cudaDeviceSynchronize();
-    // //     printf("numChanged ?== numNodes, %d, %d\n", numChanged, numNodes);
-    // //     // __syncthreads();
-    // //     // if (numChanged != numNodes) {
-    // //     //     printf("numChanged ?== numNodes, %d, %d\n", numChanged, numNodes);
-    // //     //     // assert(numChanged == numNodes);
-    // //     // }
-        
-    // // }
-    
 }
 
 /**
@@ -584,27 +347,16 @@ void reassign_nodes(
     int edgeNum = threadIdx.x; // my edge pointer
 
     if (numNodes -1 < i_ptr) {
-        // printf("node:%u  - nie istnieję, jestem narzutem na blok\n", i_ptr);
         return;
     }
 
     int i = binNodes[i_ptr];
 
     if (V[i + 1] - V[i] -1 < edgeNum) {
-        // printf("(i, j): (%u, %u) jestem niepotrzebny\n", i, j);
         return;
     }
 
     uint32_t j = E[V[i] + edgeNum];
-
-
-    // TOOD
-    if (comm[j] == 0) {
-        printf("DUPA: i=%d, j=%d", i, j);
-    }
-    // assert(comm[j] > 0);
-
-    // printf(">> %d: (%d, %d): ogarniam sąsiada: %u\n", i, i_ptr, edgeNum, j);
 
     // each hashtable contains of hasharrayEntries elements
     KeyValueFloat* hashWeight = (KeyValueFloat*) hashtables + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries);
@@ -623,70 +375,29 @@ void reassign_nodes(
     uint32_t mySlot = HA::insertInt(hashComm, comm[j], comm[j], hasharrayEntries);
     float sum = HA::addFloatSpecificPos(hashWeight, mySlot, W[V[i] + edgeNum]);
 
-    // if (i == 6) {
-    //     printf("AAA>>>: dodałem %f (%d) do hash[%d], that belongs to comm %d\n", W[V[i] + edgeNum], j, mySlot, comm[j]);
-    // }
-
     __syncwarp();
 
     uint32_t mask = __ballot_sync(FULL_MASK, edgeNum < maxDegree / 2);
     assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2)); // TODO - to się kiedyś wysypie i dobrze, wtedy podmienić mask
 
-    // if (i_ptr + edgeNum == 0) {
-    //     binprintf(mask);
-    //     printf("\n");
-    //     binprintf(1 << 5);
-    // }
-    
-
-    // printf("WAGA: (comm %d, comm %d) = %f\n", comm[i], comm[j], hashWeight[mySlot].value);
-
     // sum of weights from node i to Ci\{i} from paper doesn't use loop values
     float loop = i == j ? W[V[i] + edgeNum] : 0;
     float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
-
-    float todo = i == j ? W[V[i] + edgeNum] : 0;
 
     __syncwarp();
 
     for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
         ei_to_Ci = fmaxf(ei_to_Ci, __shfl_down_sync(mask, ei_to_Ci, offset)); // only warp with idx % maxDegree == 0 keeps proper value
         loop = fmaxf(loop, __shfl_down_sync(mask, loop, offset));
-        // if (j == 6) {
-        //     printf("%d: AAAXD: %f\n", edgeNum, ei_to_Ci);
-        // }
-        todo += __shfl_down_sync(mask, todo, offset);
     }
    
 
-    // TODO nie usuwaj, wazny assert
-    if (edgeNum == 0) {
-        assert(todo == loop);
-        ei_to_Ci -= loop;
-        // printf("---%d, ei_to_ci: %f\n", i, ei_to_Ci);
-    }
-
-    // TODO zrobic dobrze
     // lack of -(e_i -> C_i\{i} / m) addend in that sum, it will be computed later
     float deltaMod = comm[j] >= comm[i] ? 
         -(1 << 5) : 
         k[i] * ( ac[comm[i]] - k[i] - ac[comm[j]] ) / (2 * m * m)  +  hashWeight[mySlot].value / m;
 
     uint32_t newCommIdx = comm[j];
-
-    // if (i == 6) {
-    //     printf("AAABBB: hashWeight[%d].value: %f\n", mySlot, hashWeight[mySlot].value);
-    // }
-    
-    // if (deltaMod > 0)
-    //     printf("***%d, deltaMod: %f dla %d\n", i, deltaMod, newCommIdx);
-
-    // if (i == 11) {
-    //     if (j == 6 || j == 10) {
-    //         printf("GREP: %d, delta: %f\n", j, deltaMod);
-    //     }
-    // }
-    
 
     for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
         float deltaModRed = __shfl_down_sync(mask, deltaMod, offset);
@@ -704,21 +415,12 @@ void reassign_nodes(
     }
 
     if (edgeNum == 0) {
-        // this code executes once per vertex
-        // if (i == 6) {
-        //     printf("AAABBB: ei - loop: %f, loop: %f\n", ei_to_Ci, loop);
-        // }
         float gain = deltaMod - ei_to_Ci / m;
-        // if (i == 2) {
-        //     printf("%d: AAA MAX_GAIN: %f to comm %d\n", i, gain, newCommIdx);
-        // }
-        // printf(" ~~~~~~~~~~~~~~~~ *MAX_GAIN for %d: %f (to node %d)\n", i, gain, newCommIdx);
+
         if (gain > 0 && newCommIdx < comm[i]) {
             assert(newCommIdx != 0);
             newComm[i] = newCommIdx;
-            // printf("~~~~~~~~~~~~~~~~(%d, %d) *%u: wywalam do communiy %u, bo gain %f\n", i_ptr, getGlobalIdx(), i, newCommIdx, gain);
         } else {
-            // printf("~~~~~~~~~~~~~~~~(%d, %d) *%u: nie wywalam, zostaje %u, bo gain %f\n", i_ptr, getGlobalIdx(), i, comm[i], gain);
             newComm[i] = comm[i];
         }
     }
@@ -738,11 +440,6 @@ float reassign_communities_bin(
                         uint32_t maxDegree,
                         const float m) {
 
-    // if (maxDegree > 20001) {
-    //     // printf("niemozliwe kurde: %d, v0=%d, v1 = %d\n", binNodesNum, V[1] - V[0], V[2] - V[1]);
-    //     assert(false); // no support for that huge bins
-    // }
-
     // TODO customize this, maybe check 2 * maxDegree?
     uint32_t hashArrayEntriesPerComm = next_2_pow(maxDegree + 1);
 
@@ -754,16 +451,10 @@ float reassign_communities_bin(
     uint32_t threadsY = min(maxThreadsY, binNodesNum);
     uint32_t blockNum = ceil( (float)binNodesNum / (float) threadsY );
 
-    // assert(blockNum * threadsY >= binNodesNum);
-    // if (blockNum * threadsY < binNodesNum) {
-    //     printf("MOD FAK: binNodesNum: %d , blockNum: %d, threadsY: %d \n", binNodesNum, blockNum, threadsY);
-    // }
     dim3 dim(threadsX, threadsY);
-    // printf("PATOLA: (%d, %d) x %d\n", threadsX, threadsY, blockNum);
 
     if (maxDegree > 32) {
         // huge nodes, maybe that huge that hasharrays cannot fit in shared mem
-        // bool useGlobalMem = maxDegree >= 1024;
 
         char *deviceGlobalHashArrays = nullptr, *perVertexVars = nullptr;
 
@@ -773,35 +464,18 @@ float reassign_communities_bin(
 
         bool useGlobalMem = SHARED_MEM_SIZE < shmBytes + (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
 
-        // printf("MOD binNodesNum: %d\n", binNodesNum);
         if (useGlobalMem) {
             size_t memsize = sizeof(KeyValueFloat) * binNodesNum * (2 * hashArrayEntriesPerComm);
-            // printf("memsize: %d\n", memsize);
             HANDLE_ERROR(cudaMalloc(&deviceGlobalHashArrays, 2 * memsize));
 
             size_t perVertexMemSize = VAR_MEM_PER_VERTEX_BYTES_DEFINE * binNodesNum;
             HANDLE_ERROR(cudaMalloc(&perVertexVars, 2 * perVertexMemSize));
             assert(perVertexVars != nullptr);
-
-            // HANDLE_ERROR(cudaHostAlloc((void**)&globalHashArrays, memsize, cudaHostAllocMapped));
-            // std::memset(globalHashArrays, '\0', memsize);
-            // HANDLE_ERROR(cudaHostGetDevicePointer(&deviceGlobalHashArrays, globalHashArrays, 0));
-            // assert(globalHashArrays != nullptr);
-            
-            // printf("huge: using global, hasharrmem: %fkb, pervertexmem: %fkb\n", (float) memsize / 1024, (float) perVertexMemSize / 1024);
-            // printf("huge, [%p, %p], [%p, %p]\n", (void*)deviceGlobalHashArrays, (void*) (deviceGlobalHashArrays + memsize), (void*)perVertexVars, (void*)(perVertexVars + perVertexMemSize));
-
         } else {
             shmBytes += (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
-            // if (shmBytes > SHARED_MEM_SIZE) {
-            //     printf("LOL: %d\n", shmBytes);
-            // }
-            
-            // printf("huge: using shared of size %f kb\n", (float) shmBytes / 1024);
             assert(shmBytes <= SHARED_MEM_SIZE);            
         }
 
-        // printf("MODOPT: maxdeg: %d, reassign_huge_nodes<< %d, (%d, %d), %d\n", maxDegree, blockNum, threadsX, threadsY, shmBytes);
         reassign_huge_nodes<<<blockNum, dim, shmBytes>>> (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m, deviceGlobalHashArrays, stride, !useGlobalMem, perVertexVars);
 
@@ -819,7 +493,6 @@ float reassign_communities_bin(
         uint32_t shmBytes = (2 * hashArrayEntriesPerComm) * sizeof(KeyValueInt) * threadsY;
         assert(shmBytes <= SHARED_MEM_SIZE);
 
-        // printf("MODOPT: reassign_nodes<< %d, (%d, %d), %d\n", blockNum, maxDegree, threadsY, shmBytes);
         reassign_nodes<<<blockNum, dim, shmBytes>>>      (binNodesNum, binNodes, 
             V, E, W, k, ac, comm, newComm, maxDegree, threadsY, hashArrayEntriesPerComm, m);
     }
@@ -835,7 +508,6 @@ void computeEiToCiSum(uint32_t V_MAX_IDX,
                          const float*    __restrict__ W,
                          const uint32_t* __restrict__ comm) {
     uint32_t me = 1 + getGlobalIdx();
-    assert(me = 1 + threadIdx.x + (blockIdx.x * blockDim.x)); // TODO wywalić
 
     if (me > V_MAX_IDX)
         return;
@@ -856,9 +528,6 @@ float __computeMod(float ei_to_Ci_sum, float m, const float* ac, uint32_t V_MAX_
     auto tmp = thrust::device_vector<float>(V_MAX_IDX + 1);
     thrust::transform(ac, ac + V_MAX_IDX + 1, tmp.begin(), thrust::square<float>());
     float sum = thrust::reduce(tmp.begin(), tmp.end(), (double) 0, thrust::plus<double>());
-    // fprintf(stderr, "MOD ACsum: %f\n", sum);
-    // fprintf(stderr, "MOD: sum ei: %f\n", ei_to_Ci_sum);
-
     return ei_to_Ci_sum / (2 * m) - ( sum / (4 * m * m));
 }
 
@@ -887,14 +556,7 @@ float computeModAndAC(uint32_t V_MAX_IDX,
     computeAC<<<all_nodes_pair.first, all_nodes_pair.second>>> (V_MAX_IDX, k, ac, comm);
     cudaDeviceSynchronize();
 
-    // printf("TODO: ei2CI: %f\n", *ei_to_Ci);
     return __computeMod(*ei_to_Ci, m, ac, V_MAX_IDX);
-}
-
-
-void print_DEBUG_stat(float oldmod, float newmod) {
-    // liczba wierzcholkow, liczba krawedzi, liczba niezerowych community po wykonaniu iteracji, mod gain przed iteracja, mod gain po iteracji
-    fprintf(stderr, "b: %f a: %f\n", oldmod, newmod);
 }
 
 
@@ -932,17 +594,9 @@ float reassign_communities(
 
     float mod0, mod1, maxMod;    
     mod0 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-    // printf("MOD0 = %f\n", mod0);
-
     maxMod = mod0;
 
     bool changedSth = true;
-
-    // for(int i = 0; i <= V_MAX_IDX; i++) {
-    //     printf("%f\n", k[i]);
-    // }
-
-    // thrust::copy(ac, (ac + V_MAX_IDX + 1), std::ostream_iterator<float>(std::cout, " "));
 
     while(true) {
 
@@ -956,9 +610,6 @@ float reassign_communities(
             auto it = thrust::partition(it0, G.end(), partitionGenerator(i));
             uint32_t maxDegree = binsHost[i];
             
-            // printf("\nBIN nodes with maxDeg <= %d\n", binsHost[i]);
-            // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
-
             uint32_t binNodesNum = thrust::distance(it0, it);
             if (binNodesNum == 0) {
                 assert(it0 == it);
@@ -967,26 +618,9 @@ float reassign_communities(
 
             uint32_t* binNodes = RAW(it0);
 
-            
-
-            // printf(">>>BIN RUN: running %u nodes in bin, i (right)=%d\n", binNodesNum, i);
             reassign_communities_bin(binNodes, binNodesNum, V, E, W, k, ac, comm, newComm, maxDegree, m);
 
-            // for(int i = 0; i < binNodesNum; i++) {
-            //     printf("lol: %d\n", binNodes[i]);
-            //     // assert(newComm[binNodes[i]] != 0);
-            // }
-
             cudaDeviceSynchronize();
-
-            // thrust::copy(it0, it, std::ostream_iterator<uint32_t>(std::cout, " "));
-            // std::cout << "a patrz teraz: \n";
-            // for (int i = 0; i <= V_MAX_IDX; i++) {
-            //     printf("%d ", newComm[i]);
-            // }
-            // thrust::copy(&newComm[0], &newComm[V_MAX_IDX], std::ostream_iterator<uint32_t>(std::cout, " "));
-
-
 
             auto pair = getBlockThreadSplit(binNodesNum);
 
@@ -996,75 +630,34 @@ float reassign_communities(
 
             // recompute AC values
             computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-            // zeroAC(ac, V_MAX_IDX);
-            // computeAC<<<pair.first, pair.second>>> (V_MAX_IDX, k, ac, comm);
             cudaDeviceSynchronize();
 
             it0 = it;
         }
 
-        // OK, we computed new communities for all bins, let's check whether
-        // modularity gain is satisfying
-
-        // printf("*****************                 ASSIGNMENT      ****************\n");
-        // print_comm_assignment(V_MAX_IDX, comm);
-
         cudaDeviceSynchronize();
 
         mod1 = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-        // print_DEBUG_stat(mod0, mod1);
 
         maxMod = max(maxMod, mod1);
 
-        // printf("MOD1 %f\n", mod1);
-
-        // if (mod0 > mod1) {
-        //     printf("MOD ZLE: %f -> %f\n", mod0, mod1);
-        // }
-
-        if (abs(mod1 - mod0) <= 0.005) {
+        if (abs(mod1 - mod0) <= 0.001) {
             if (!changedSth) {
                 return maxMod;
             } else {
                 contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
                 changedSth = false;
-                // printf("\n*****************                 CONTRACT2                ****************\n");
-
                 float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-                // fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
-                // fprintf(stderr, "\n=======\n");
-                // print_DEBUG_stat(mod1, mod_contract);
             }
         } else if (mod1 - mod0 < minGain) {
             contract(V_MAX_IDX, V, E, W, k, comm, globCommAssignment);
-            // fprintf(stderr, "\n=======\n");
             changedSth = false;
-            // printf("\n*****************                 CONTRACT                 ****************\n");
-            // print_comm_assignment(V_MAX_IDX, comm);
             cudaDeviceSynchronize();
             mod0 = mod1;
 
-            // printf("COMMS END: \n");
-            // for(int i = 1; i <= V_MAX_IDX; i++) {
-            //     printf("%d ", comm[i]);
-            // }
-            // printf("\n");
-
             float mod_contract = computeModAndAC(V_MAX_IDX, V, E, W, k, comm, ac, m);
-            // fprintf(stderr, "MOD CONTRCT: %f\n", mod_contract);
-
-            // print_DEBUG_stat(mod1, mod_contract);
-
-            // if (mod1 - mod_contract > FLT_EPSILON) {
-            //     printf("MOD ZLE: KONCZE\n");
-            // }
-
-            // return mod1; // TODO debug  remove, up to first constract
-            // break; // TODO, poprawić contract
         } else {
             changedSth = true;
-            // printf("going to next modularity iteration (mod gain sufficient): mod 0, 1: %f, %f\n", mod0, mod1);
-            // mod0 = mod1;
         }
         mod0 = mod1;
     }
