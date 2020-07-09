@@ -206,18 +206,6 @@ uint32_t next_2_pow(uint32_t n) {
 }
 
 
-// TODO: only 31 bits (without highest)
-__device__ 
-void binprintf(uint32_t v)
-{
-    uint32_t mask = 1 << ((sizeof(uint32_t) << 3) - 1);
-    while (mask) {
-        printf("%u", (v & mask ? 1 : 0));
-        mask >>= 1;
-    }
-    printf("\n");
-}
-
 __device__
 int getGlobalIdx(){
     return blockIdx.x * blockDim.x * blockDim.y
