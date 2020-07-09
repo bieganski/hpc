@@ -236,9 +236,6 @@ void updateSpecific(
     }
     
     uint32_t i = indices[tid];
-    // if (from[i] == 0)
-    //     printf("updateSpecific idx=%d, newComm[idx]=%d, it's deg: %d\n", i, from[i], V[i+1] - V[i]);
-    assert(from[i] != 0);
     to[i] = from[i];
 }
 
@@ -251,7 +248,6 @@ __host__ std::pair<uint16_t, uint16_t> getBlockThreadSplit(uint32_t threads) {
     if (threads < 1024) {
         return std::make_pair(1, (uint16_t) threads);
     }
-    // assert(threads < (1 << 26)); // max blockIdx.x * threadIdx.x
     return std::make_pair((uint16_t)  ceil( (float) threads / 1024.0), 1024.0);
 }
 
@@ -280,10 +276,6 @@ void print_comm_assignment(const uint32_t V_MAX_IDX, const uint32_t* __restrict_
             printf(" %d", *it);
             it++;
         }
-        // for (int j = 0; j < v[i].size(); j++) {
-        //     printf(" %d", v[i][j]);
-        // }
-        // PRINT(v[i].begin(), v[i].end());
         printf("\n");
     }
 }

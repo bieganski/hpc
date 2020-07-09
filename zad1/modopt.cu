@@ -232,9 +232,6 @@ void reassign_huge_nodes(
         
     __syncthreads();
 
-    uint64_t deltaMod;
-    float ei_to_Ci;
-
     int cntr = 0;
     uint32_t edge_base = edge_ptr;
     uint32_t eitociidx = 0;
