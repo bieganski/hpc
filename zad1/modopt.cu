@@ -641,7 +641,7 @@ float reassign_communities(
 
         maxMod = max(maxMod, mod1);
 
-        if (abs(mod1 - mod0) <= 0.001) {
+        if (abs(mod1 - mod0) <= 0.005) {
             if (!changedSth) {
                 return maxMod;
             } else {
