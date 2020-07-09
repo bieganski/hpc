@@ -362,7 +362,6 @@ void reassign_nodes(
     KeyValueFloat* hashWeight = (KeyValueFloat*) hashtables + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries);
     KeyValueInt*   hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
 
-    // TODO tu jest za dużo roboty
     for (int i = 0; i < hasharrayEntries; i++) {
         hashWeight[i].key = hashArrayNull;
         hashWeight[i].value = (float) 0;
@@ -378,7 +377,6 @@ void reassign_nodes(
     __syncwarp();
 
     uint32_t mask = __ballot_sync(FULL_MASK, edgeNum < maxDegree / 2);
-    assert(mask == __ballot_sync(__activemask(), edgeNum < maxDegree / 2)); // TODO - to się kiedyś wysypie i dobrze, wtedy podmienić mask
 
     // sum of weights from node i to Ci\{i} from paper doesn't use loop values
     float loop = i == j ? W[V[i] + edgeNum] : 0;
