@@ -358,6 +358,12 @@ void reassign_nodes(
 
     uint32_t j = E[V[i] + edgeNum];
 
+    // dziwne 1
+    // if (comm[j] == 0) {
+    //     printf("DUPA: i=%d, j=%d", i, j);
+    // }
+
+
     // each hashtable contains of hasharrayEntries elements
     KeyValueFloat* hashWeight = (KeyValueFloat*) hashtables + (i_ptr % nodesPerBlock) * (2 * hasharrayEntries);
     KeyValueInt*   hashComm   = (KeyValueInt*)   hashWeight + hasharrayEntries;
@@ -383,12 +389,20 @@ void reassign_nodes(
     // sum of weights from node i to Ci\{i} from paper doesn't use loop values
     float loop = i == j ? W[V[i] + edgeNum] : 0;
     float ei_to_Ci = comm[j] == comm[i] ? hashWeight[mySlot].value : 0;
+    float todo = i == j ? W[V[i] + edgeNum] : 0;
 
     __syncwarp();
 
     for (int offset = maxDegree / 2; offset > 0; offset /= 2) {
         ei_to_Ci = fmaxf(ei_to_Ci, __shfl_down_sync(mask, ei_to_Ci, offset)); // only warp with idx % maxDegree == 0 keeps proper value
         loop = fmaxf(loop, __shfl_down_sync(mask, loop, offset));
+        todo += __shfl_down_sync(mask, todo, offset);
+    }
+
+    // dziwne 2
+    if (edgeNum == 0) {
+        assert(todo == loop);
+        ei_to_Ci -= loop;
     }
    
 
@@ -641,7 +655,7 @@ float reassign_communities(
 
         maxMod = max(maxMod, mod1);
 
-        if (abs(mod1 - mod0) <= 0.005) {
+        if (abs(mod1 - mod0) <= 0.001) {
             if (!changedSth) {
                 return maxMod;
             } else {
