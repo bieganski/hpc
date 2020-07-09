@@ -638,8 +638,8 @@ int main(int argc, char **argv) {
     cudaEventDestroy(startComp);
     cudaEventDestroy(stopComp);
 
-    // printf("%f\n", mod);
-    // printf("%f %f\n", elapsedTimeComp, elapsedTimeCopy);
+    printf("%f\n", mod);
+    printf("%f %f\n", elapsedTimeComp, elapsedTimeCopy);
 
     thrust::host_vector<uint32_t> resComm(V_MAX_IDX + 1);
     
